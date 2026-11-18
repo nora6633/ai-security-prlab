@@ -31,27 +31,6 @@ function RuleList({ rules, details, onChange }) {
   })}</div>;
 }
 
-function DetectionRules({ policy }) {
-  if (!policy) return <p>正在讀取規則…</p>;
-  return <div className={styles.detectionGroups}>{["input", "output"].map((section) => {
-    const config = policy[section];
-    const descriptions = section === "input" ? inputRuleDetails : outputRuleDetails;
-    return <section key={section} className={styles.detectionGroup}>
-      <h3>{section === "input" ? "輸入偵測" : "輸出遮罩"}</h3>
-      <div className={styles.detectionList}>{Object.entries(config.rules).map(([name, enabled]) => {
-        const info = descriptions[name] || { title: name, description: "此關卡設定的規則。" };
-        const active = policy.enabled !== false && config.enabled && enabled;
-        return <article key={name} className={styles.detectionRule}>
-          <div className={styles.detectionHeading}><strong>{info.title}</strong><span className={active ? styles.ruleEnabled : styles.ruleDisabled}>{active ? "已啟用" : "已關閉"}</span></div>
-          <p>{info.description}</p>
-          {info.example && <p>例如：<code>{info.example}</code></p>}
-          {policy.patterns?.[section]?.[name] && <details><summary>查看比對條件</summary><code className={styles.rulePattern}>{policy.patterns[section][name]}</code></details>}
-        </article>;
-      })}</div>
-    </section>;
-  })}</div>;
-}
-
 export default function ChatPage() {
   const [messages, setMessages] = useState([]);
   const [draft, setDraft] = useState("");
@@ -64,7 +43,8 @@ export default function ChatPage() {
   const [chatMode, setChatMode] = useState("guarded");
   const [labId, setLabId] = useState("Lab01");
   const [policy, setPolicy] = useState(null);
-  const [savedPolicy, setSavedPolicy] = useState(null);
+  const [detectionRules, setDetectionRules] = useState(null);
+  const [rulesError, setRulesError] = useState("");
   const [policyMessage, setPolicyMessage] = useState("");
   const [policyBusy, setPolicyBusy] = useState(false);
   const bottomRef = useRef(null);
@@ -84,8 +64,15 @@ export default function ChatPage() {
   useEffect(() => { setLabId(new URLSearchParams(window.location.search).get("lab") || "Lab01"); }, []);
   useEffect(() => {
     fetch(`/api/control/guardrail?lab=${encodeURIComponent(labId)}`, { cache: "no-store" })
-      .then(async (response) => { const data = await response.json(); if (!response.ok) throw new Error(data.error); setPolicy(data); setSavedPolicy(data); })
+      .then(async (response) => { const data = await response.json(); if (!response.ok) throw new Error(data.error); setPolicy(data); })
       .catch((error) => setPolicyMessage(error.message || "無法讀取護欄設定"));
+  }, [labId]);
+  useEffect(() => {
+    setDetectionRules(null);
+    setRulesError("");
+    fetch(`/api/labs/${encodeURIComponent(labId)}/rules`, { cache: "no-store" })
+      .then(async (response) => { const data = await response.json(); if (!response.ok) throw new Error(data.detail); setDetectionRules(data.rules); })
+      .catch((error) => setRulesError(error.message || "無法讀取偵測規則"));
   }, [labId]);
   useEffect(() => { refreshStatus(); }, [refreshStatus]);
   useEffect(() => {
@@ -147,7 +134,6 @@ export default function ChatPage() {
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "儲存失敗");
-      setSavedPolicy({ ...policy, enabled: true });
       setPolicyMessage(data.message);
     } catch (error) { setPolicyMessage(error.message || "儲存失敗"); }
     finally { setPolicyBusy(false); }
@@ -274,9 +260,14 @@ export default function ChatPage() {
       </section>
         {chatMode === "guarded" && <aside className={styles.guardrailSidebar}>
         <section className={styles.detectionPanel} aria-label="本關防禦規則">
-          <h2>本關防禦規則</h2>
-          <p>目前儲存的練習模式設定</p>
-          {savedPolicy ? <DetectionRules policy={savedPolicy} /> : <p>{policyMessage || "正在讀取規則…"}</p>}
+          <h2>本關偵測規則</h2>
+          {rulesError ? <p role="alert">{rulesError}</p> : detectionRules ? (detectionRules.length ? detectionRules.map((rule) => <article className={styles.detectionRule} key={rule.id}>
+            <h3>{rule.name}</h3>
+            <p>{rule.description}</p>
+            <p>資料來源：{rule.index?.join(", ") || "未指定"}</p>
+            <strong>KQL 查詢</strong>
+            <pre className={styles.rulePattern}>{rule.query}</pre>
+          </article>) : <p>本關尚未設定顯示的偵測規則。</p>) : <p>正在讀取規則…</p>}
         </section>
         <details className={styles.policyPanel}>
           <summary>護欄設定</summary>
