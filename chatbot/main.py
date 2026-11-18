@@ -99,7 +99,7 @@ async def chat(request: ChatRequest):
 
     # Inspect each request synchronously before calling Open WebUI/the model.
     user_context = "\n".join(message.content for message in request.messages if message.role == "user")
-    guardrail = inspect_content(user_context, guardrail_config)
+    guardrail = inspect_content(user_context, guardrail_config, user_message or "")
     if guardrail.triggered:
         categories = ",".join(guardrail.categories)
         log_text = (user_message or "").replace("\r", " ").replace("\n", " ")

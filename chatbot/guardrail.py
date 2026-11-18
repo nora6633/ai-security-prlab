@@ -33,6 +33,23 @@ DEFAULT_INSTRUCTION = (
 )
 
 
+def load_detection_keywords(rule_ids: list[str]) -> dict[str, tuple[str, ...]]:
+    """Read quoted KQL phrases from the lab's exported Elastic detection rules."""
+    rules_path = Path(os.getenv("DETECTION_RULES_PATH", "/etc/lab-detection/rules_export.ndjson"))
+    try:
+        rows = [json.loads(line) for line in rules_path.read_text(encoding="utf-8").splitlines() if line.strip()]
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ValueError(f"Cannot load detection rules: {rules_path}") from exc
+    keywords = {}
+    for rule_id in rule_ids:
+        rule = next((row for row in rows if isinstance(row, dict) and row.get("rule_id") == rule_id), None)
+        if not rule or rule.get("language") != "kuery" or not isinstance(rule.get("query"), str):
+            raise ValueError(f"Unknown KQL detection rule: {rule_id}")
+        phrases = [re.sub(r'\\(["\\])', r"\1", match) for match in re.findall(r'\b[\w.]+\s*:\s*"((?:\\.|[^"\\])*)"', rule["query"])]
+        keywords[rule_id] = tuple(dict.fromkeys(phrase for phrase in phrases if phrase.strip()))
+    return keywords
+
+
 def load_config(path: str | Path | None = None) -> dict[str, Any]:
     """Read and validate unified guardrail + evaluator JSON configuration."""
     config_path = Path(path) if path else DEFAULT_CONFIG_PATH
@@ -60,6 +77,10 @@ def load_config(path: str | Path | None = None) -> dict[str, Any]:
     rules = input_config.get("rules", {})
     if not isinstance(rules, dict) or any(not isinstance(value, bool) for value in rules.values()):
         raise ValueError("guardrail.input.rules must map rule names to booleans")
+    detection_rules = input_config.get("detection_rules", [])
+    if not isinstance(detection_rules, list) or any(not isinstance(item, str) or not item for item in detection_rules):
+        raise ValueError("guardrail.input.detection_rules must be a list of rule ids")
+    input_config["_detection_keywords"] = load_detection_keywords(detection_rules) if detection_rules else {}
     output_config = guardrail.get("output", {})
     if not isinstance(output_config, dict):
         raise ValueError("guardrail.output must be an object")
