@@ -519,7 +519,7 @@ class Handler(BaseHTTPRequestHandler):
                 with POLICY_LOCK:
                     policy = json.loads((lab["directory"] / "guardrail.json").read_text(encoding="utf-8"))["guardrail"]
                 self._send(200, {
-                    "input": policy["input"], "output": policy["output"],
+                    "enabled": policy.get("enabled", True), "input": policy["input"], "output": policy["output"],
                     "patterns": {
                         "input": {name: INPUT_RULES[name].pattern for name in policy["input"].get("rules", {}) if name in INPUT_RULES},
                         "output": {name: OUTPUT_RULES[name].pattern for name in policy["output"].get("rules", {}) if name in OUTPUT_RULES},

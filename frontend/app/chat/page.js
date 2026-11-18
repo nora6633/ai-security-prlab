@@ -21,13 +21,34 @@ const outputRuleDetails = {
   secret_assignment: { title: "密碼與金鑰欄位", description: "遮罩 password、api_key 等欄位指定的值。" },
 };
 
-function RuleList({ rules, details, patterns = {}, onChange }) {
+function RuleList({ rules, details, onChange }) {
   return <div className={styles.ruleList}>{Object.entries(rules).map(([name, enabled]) => {
     const rule = details[name] || { title: name, description: "此關卡設定的規則。" };
     return <label className={styles.ruleItem} key={name}>
       <input type="checkbox" checked={enabled} onChange={(event) => onChange(name, event.target.checked)} />
-      <span className={styles.ruleText}><strong>{rule.title}</strong><span>{rule.description}</span>{rule.example && <span>例如：<code>{rule.example}</code></span>}<span>比對規則（正規表示式）：</span><code className={styles.rulePattern}>{patterns[name] || "此規則沒有可顯示的比對式"}</code></span>
+      <span className={styles.ruleText}><strong>{rule.title}</strong></span>
     </label>;
+  })}</div>;
+}
+
+function DetectionRules({ policy }) {
+  if (!policy) return <p>正在讀取規則…</p>;
+  return <div className={styles.detectionGroups}>{["input", "output"].map((section) => {
+    const config = policy[section];
+    const descriptions = section === "input" ? inputRuleDetails : outputRuleDetails;
+    return <section key={section} className={styles.detectionGroup}>
+      <h3>{section === "input" ? "輸入偵測" : "輸出遮罩"}</h3>
+      <div className={styles.detectionList}>{Object.entries(config.rules).map(([name, enabled]) => {
+        const info = descriptions[name] || { title: name, description: "此關卡設定的規則。" };
+        const active = policy.enabled !== false && config.enabled && enabled;
+        return <article key={name} className={styles.detectionRule}>
+          <div className={styles.detectionHeading}><strong>{info.title}</strong><span className={active ? styles.ruleEnabled : styles.ruleDisabled}>{active ? "已啟用" : "已關閉"}</span></div>
+          <p>{info.description}</p>
+          {info.example && <p>例如：<code>{info.example}</code></p>}
+          {policy.patterns?.[section]?.[name] && <details><summary>查看比對條件</summary><code className={styles.rulePattern}>{policy.patterns[section][name]}</code></details>}
+        </article>;
+      })}</div>
+    </section>;
   })}</div>;
 }
 
@@ -43,6 +64,7 @@ export default function ChatPage() {
   const [chatMode, setChatMode] = useState("guarded");
   const [labId, setLabId] = useState("Lab01");
   const [policy, setPolicy] = useState(null);
+  const [savedPolicy, setSavedPolicy] = useState(null);
   const [policyMessage, setPolicyMessage] = useState("");
   const [policyBusy, setPolicyBusy] = useState(false);
   const bottomRef = useRef(null);
@@ -62,7 +84,7 @@ export default function ChatPage() {
   useEffect(() => { setLabId(new URLSearchParams(window.location.search).get("lab") || "Lab01"); }, []);
   useEffect(() => {
     fetch(`/api/control/guardrail?lab=${encodeURIComponent(labId)}`, { cache: "no-store" })
-      .then(async (response) => { const data = await response.json(); if (!response.ok) throw new Error(data.error); setPolicy(data); })
+      .then(async (response) => { const data = await response.json(); if (!response.ok) throw new Error(data.error); setPolicy(data); setSavedPolicy(data); })
       .catch((error) => setPolicyMessage(error.message || "無法讀取護欄設定"));
   }, [labId]);
   useEffect(() => { refreshStatus(); }, [refreshStatus]);
@@ -125,6 +147,7 @@ export default function ChatPage() {
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "儲存失敗");
+      setSavedPolicy({ ...policy, enabled: true });
       setPolicyMessage(data.message);
     } catch (error) { setPolicyMessage(error.message || "儲存失敗"); }
     finally { setPolicyBusy(false); }
@@ -249,7 +272,13 @@ export default function ChatPage() {
         </form>
         <div className={styles.chatFoot}><span>重新整理頁面會清除本次對話。</span><span>{messages.length ? `${messages.length} 則訊息` : `${labId} 測試`}</span></div>
       </section>
-        {chatMode === "guarded" && <details className={styles.policyPanel}>
+        {chatMode === "guarded" && <aside className={styles.guardrailSidebar}>
+        <section className={styles.detectionPanel} aria-label="本關防禦規則">
+          <h2>本關防禦規則</h2>
+          <p>目前儲存的練習模式設定</p>
+          {savedPolicy ? <DetectionRules policy={savedPolicy} /> : <p>{policyMessage || "正在讀取規則…"}</p>}
+        </section>
+        <details className={styles.policyPanel}>
           <summary>護欄設定</summary>
           {policy ? <form onSubmit={savePolicy}>
             <fieldset><legend>輸入護欄</legend>
@@ -273,7 +302,8 @@ export default function ChatPage() {
           </form> : <p>正在讀取護欄設定…</p>}
           {policyMessage && <p role="status">{policyMessage}</p>}
           <p>此設定套用於練習模式。</p>
-        </details>}
+        </details>
+        </aside>}
       </div>
       <footer className={styles.footer}><span>TWISC @ NTUST · AI SECURITY LAB</span><span>CHAT TEST · PROMPT INJECTION</span></footer>
     </main>

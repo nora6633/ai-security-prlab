@@ -41,7 +41,7 @@
 .backLink:hover { color: #1b332c; text-decoration: underline; }
 
 .workspace { display: grid; grid-template-columns: minmax(0, 1fr); gap: 24px; align-items: start; margin: 28px auto 0; }
-.workspace:has(.policyPanel) { grid-template-columns: minmax(0, 1fr) minmax(360px, 460px); }
+.workspace:has(.guardrailSidebar) { grid-template-columns: minmax(0, 1fr) minmax(360px, 460px); }
 .chatCard {
   display: flex;
   flex-direction: column;
@@ -56,7 +56,20 @@
   box-shadow: 0 16px 44px #18332e0a;
 }
 
-.policyPanel { min-width: 0; max-height: min(760px, calc(100vh - 138px)); overflow-y: auto; padding: 20px; border: 1px solid var(--line); border-radius: 17px; background: #fff; box-shadow: 0 16px 44px #18332e0a; }
+.guardrailSidebar { min-width: 0; display: grid; gap: 16px; max-height: min(760px, calc(100vh - 138px)); overflow-y: auto; }
+.detectionPanel, .policyPanel { min-width: 0; padding: 20px; border: 1px solid var(--line); border-radius: 17px; background: #fff; box-shadow: 0 16px 44px #18332e0a; }
+.detectionPanel h2 { margin: 0; font-size: 20px; color: #173550; }
+.detectionPanel > p { margin: 8px 0 20px; color: #536960; }
+.detectionGroups { display: grid; gap: 24px; }
+.detectionGroup h3 { margin: 0 0 12px; font-size: 16px; color: #244c3e; }
+.detectionList { display: grid; gap: 10px; }
+.detectionRule { padding: 14px; border: 1px solid #e0ebe7; border-radius: 8px; background: #f8fbfa; }
+.detectionRule p { margin: 7px 0 0; color: #536960; line-height: 1.5; overflow-wrap: anywhere; }
+.detectionRule summary { margin-top: 10px; cursor: pointer; color: #175c68; }
+.detectionHeading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.ruleEnabled, .ruleDisabled { flex: 0 0 auto; padding: 4px 8px; border-radius: 6px; }
+.ruleEnabled { color: #176541; background: #e1f4e8; }
+.ruleDisabled { color: #596860; background: #e9eeeb; }
 .policyPanel summary { cursor: pointer; font-weight: 700; color: #244c3e; }
 .policyPanel form { display: grid; gap: 24px; padding-top: 20px; }
 .policyPanel fieldset { display: flex; flex-wrap: wrap; gap: 16px; min-width: 0; border: 1px solid #d7e4db; border-radius: 10px; padding: 18px; }
@@ -183,8 +196,8 @@
 }
 
 @media (max-width: 1000px) {
-  .workspace:has(.policyPanel) { grid-template-columns: minmax(0, 1fr); }
-  .policyPanel { grid-row: 1; max-height: none; }
+  .workspace:has(.guardrailSidebar) { grid-template-columns: minmax(0, 1fr); }
+  .guardrailSidebar { grid-row: 1; max-height: none; }
 }
 
 .brandMark { width:39px; height:39px; border-radius:12px; background:#103353; box-shadow:0 5px 16px #10284422; }
