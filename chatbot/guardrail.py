@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass
 import json
+import yaml
 from pathlib import Path
 from typing import Any
 
@@ -35,8 +36,8 @@ def load_config(path: str | Path | None = None) -> dict[str, Any]:
     config_path = Path(path) if path else DEFAULT_CONFIG_PATH
     try:
         with config_path.open("r", encoding="utf-8") as stream:
-            config = json.load(stream)
-    except (OSError, json.JSONDecodeError) as exc:
+            config = yaml.safe_load(stream)
+    except (OSError, yaml.YAMLError) as exc:
         raise ValueError(f"Cannot load guardrail config: {config_path}") from exc
     if not isinstance(config, dict) or not isinstance(config.get("guardrail"), dict):
         raise ValueError("Config must contain a guardrail object")
@@ -65,7 +66,7 @@ def load_config(path: str | Path | None = None) -> dict[str, Any]:
     output_rules = output_config.get("rules", {})
     if not isinstance(output_rules, dict) or any(not isinstance(value, bool) for value in output_rules.values()):
         raise ValueError("guardrail.output.rules must map rule names to booleans")
-    judge = guardrail.get("judge")
+    judge = config.get("judge", guardrail.get("judge"))
     if not isinstance(judge, dict) or judge.get("type") not in {"guardrail", "ai_judge", "ai_confidence"}:
         raise ValueError("guardrail.judge.type must be 'guardrail' or 'ai_judge'")
     if not isinstance(judge.get("objectives", []), list):
@@ -93,7 +94,7 @@ def input_settings(config: dict[str, Any]) -> dict[str, Any]:
 
 
 def judge_settings(config: dict[str, Any]) -> dict[str, Any]:
-    return guardrail_settings(config).get("judge", {})
+    return config.get("judge", guardrail_settings(config).get("judge", {}))
 
 
 def output_settings(config: dict[str, Any]) -> dict[str, Any]:
@@ -108,8 +109,8 @@ def load_challenge(path: str | Path | None = None) -> dict[str, Any]:
     challenge_path = Path(path) if path else DEFAULT_CHALLENGE_PATH
     try:
         with challenge_path.open("r", encoding="utf-8") as stream:
-            challenge = json.load(stream)
-    except (OSError, json.JSONDecodeError) as exc:
+            challenge = yaml.safe_load(stream)
+    except (OSError, yaml.YAMLError) as exc:
         raise ValueError(f"Cannot load challenge config: {challenge_path}") from exc
     if not isinstance(challenge, dict) or not isinstance(challenge.get("system_prompt"), str):
         raise ValueError("Challenge config must define a system_prompt")

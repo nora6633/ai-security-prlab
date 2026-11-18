@@ -15,6 +15,7 @@ import uuid
 from datetime import timedelta
 from urllib.parse import parse_qs, urlparse
 from labs import get_lab, validate_manifests
+import yaml
 from cryptography import x509
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
@@ -356,7 +357,7 @@ def run_start(job_id, lab):
         ("確認 kind 叢集", None, 30),
         ("建置 FastAPI chatbot 映像", ["docker", "build", "-t", "lab-chatbot:dev", str(ROOT / "chatbot")], 240),
         ("載入映像至 kind", ["kind", "load", "docker-image", "lab-chatbot:dev", "--name", CLUSTER], 180),
-        ("建立 lab namespace", ["kubectl", "apply", "-f", str(current_lab()["directory"] / "00-namespace.yaml")], 45),
+        ("建立 lab namespace", ["kubectl", "apply", "-f", str(current_lab()["directory"] / "k8s" / "00-namespace.yaml")], 45),
         ("清除舊的規則匯入 Job", ["kubectl", "-n", current_lab()["namespace"], "delete", "job", "import-elastic-detection-rules", "--ignore-not-found=true"], 30),
     ]
     try:
@@ -517,7 +518,7 @@ class Handler(BaseHTTPRequestHandler):
                     self._send(404, {"error": "找不到 Lab"})
                     return
                 with POLICY_LOCK:
-                    policy = json.loads((lab["directory"] / "guardrail.json").read_text(encoding="utf-8"))["guardrail"]
+                    policy = yaml.safe_load((lab["directory"] / "modes" / "practice.yaml").read_text(encoding="utf-8"))["guardrail"]
                 self._send(200, {
                     "enabled": policy.get("enabled", True), "input": policy["input"], "output": policy["output"],
                     "patterns": {
@@ -525,7 +526,7 @@ class Handler(BaseHTTPRequestHandler):
                         "output": {name: OUTPUT_RULES[name].pattern for name in policy["output"].get("rules", {}) if name in OUTPUT_RULES},
                     },
                 })
-            except (OSError, ValueError, KeyError) as exc:
+            except (OSError, ValueError, KeyError, yaml.YAMLError) as exc:
                 self._send(503, {"error": f"無法讀取護欄設定：{exc}"})
             return
         if parsed.path == "/api/status":
@@ -617,9 +618,9 @@ class Handler(BaseHTTPRequestHandler):
                 if length <= 0 or length > 32768:
                     raise ValueError("設定大小無效")
                 incoming = json.loads(self.rfile.read(length))
-                path = lab["directory"] / "guardrail.json"
+                path = lab["directory"] / "modes" / "practice.yaml"
                 with POLICY_LOCK:
-                    config = json.loads(path.read_text(encoding="utf-8"))
+                    config = yaml.safe_load(path.read_text(encoding="utf-8"))
                     policy = config["guardrail"]
                     for section in ("input", "output"):
                         value = incoming.get(section)
@@ -642,7 +643,7 @@ class Handler(BaseHTTPRequestHandler):
                     policy["enabled"] = True
                     temporary = path.with_name(f".{path.name}.{uuid.uuid4().hex}.tmp")
                     try:
-                        temporary.write_text(json.dumps(config, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+                        temporary.write_text(yaml.safe_dump(config, allow_unicode=True, sort_keys=False, width=1000), encoding="utf-8")
                         temporary.replace(path)
                     finally:
                         temporary.unlink(missing_ok=True)
@@ -655,7 +656,7 @@ class Handler(BaseHTTPRequestHandler):
                             existing = subprocess.run(["kubectl", "-n", namespace, "get", "configmap", "chatbot-guardrail", "-o", "name"], capture_output=True, text=True, timeout=8)
                             if existing.returncode == 0:
                                 verify_namespace_owner(lab)
-                                create = subprocess.run(["kubectl", "-n", namespace, "create", "configmap", "chatbot-guardrail", f"--from-file=guardrail.json={path}", "--dry-run=client", "-o", "yaml"], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=15)
+                                create = subprocess.run(["kubectl", "-n", namespace, "create", "configmap", "chatbot-guardrail", f"--from-file=practice.yaml={path}", "--dry-run=client", "-o", "yaml"], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=15)
                                 if create.returncode == 0:
                                     result = subprocess.run(["kubectl", "apply", "-f", "-"], input=create.stdout, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=15)
                                     applied = result.returncode == 0
@@ -663,7 +664,7 @@ class Handler(BaseHTTPRequestHandler):
                     except (OSError, subprocess.SubprocessError, RuntimeError):
                         note = "設定已儲存，但無法更新執行中的服務；重新啟動 Lab 後會套用。"
                 self._send(200, {"applied": applied, "message": note})
-            except (OSError, ValueError, KeyError, TypeError, subprocess.SubprocessError, RuntimeError) as exc:
+            except (OSError, ValueError, KeyError, TypeError, subprocess.SubprocessError, RuntimeError, yaml.YAMLError) as exc:
                 self._send(400, {"error": f"無法更新護欄設定：{exc}"})
             return
         if parsed.path == "/api/stop-forwards":

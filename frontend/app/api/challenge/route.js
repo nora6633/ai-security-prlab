@@ -1,5 +1,6 @@
 import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
+import { parse } from "yaml";
 
 export const dynamic = "force-dynamic";
 
@@ -14,8 +15,8 @@ export async function GET(request) {
     const labFolders = await readdir(labsPath, { withFileTypes: true });
     const labFolder = labFolders.find((entry) => entry.isDirectory() && (entry.name === labId || entry.name.startsWith(`${labId}-`)));
     if (!labFolder) throw new Error("Lab folder not found");
-    const filePath = path.join(labsPath, labFolder.name, "challenge.json");
-    const config = JSON.parse(await readFile(filePath, "utf8"));
+    const filePath = path.join(labsPath, labFolder.name, "challenge.yaml");
+    const config = parse(await readFile(filePath, "utf8"));
     return Response.json({
       lab_id: config.lab_id,
       title: config.title,

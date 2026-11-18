@@ -34,9 +34,9 @@ spec:
                 name: chatbot-config
           env:
             - name: GUARDRAIL_CONFIG
-              value: /etc/lab-guardrail/guardrail.json
+              value: /etc/lab-guardrail/mode.yaml
             - name: CHALLENGE_CONFIG
-              value: /etc/lab-challenge/challenge.json
+              value: /etc/lab-challenge/challenge.yaml
             - name: OPENWEBUI_API_KEY
               valueFrom:
                 secretKeyRef:
@@ -74,14 +74,14 @@ spec:
           configMap:
             name: chatbot-guardrail
             items:
-              - key: guardrail.json
-                path: guardrail.json
+              - key: practice.yaml
+                path: mode.yaml
         - name: challenge-policy
           configMap:
             name: chatbot-challenge
             items:
-              - key: challenge.json
-                path: challenge.json
+              - key: challenge.yaml
+                path: challenge.yaml
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -110,9 +110,9 @@ spec:
                 name: chatbot-config
           env:
             - name: GUARDRAIL_CONFIG
-              value: /etc/lab-guardrail/guardrail.json
+              value: /etc/lab-guardrail/mode.yaml
             - name: CHALLENGE_CONFIG
-              value: /etc/lab-challenge/challenge.json
+              value: /etc/lab-challenge/challenge.yaml
             - name: OPENWEBUI_API_KEY
               valueFrom:
                 secretKeyRef:
@@ -150,14 +150,14 @@ spec:
           configMap:
             name: chatbot-guardrail-disabled
             items:
-              - key: guardrail-unguarded.json
-                path: guardrail.json
+              - key: exam.yaml
+                path: mode.yaml
         - name: challenge-policy
           configMap:
             name: chatbot-challenge
             items:
-              - key: challenge.json
-                path: challenge.json
+              - key: challenge.yaml
+                path: challenge.yaml
 ---
 apiVersion: v1
 kind: Service

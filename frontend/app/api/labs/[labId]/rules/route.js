@@ -12,7 +12,7 @@ export async function GET(_request, { params }) {
     const ids = lab.config.detection_rule_ids || [];
     if (!Array.isArray(ids) || ids.some((id) => typeof id !== "string")) throw new Error("無效的規則設定");
     if (!ids.length) return Response.json({ rules: [] });
-    const contents = await readFile(path.join(lab.directory, "alerts", "rules_export.ndjson"), "utf8");
+    const contents = await readFile(path.join(lab.directory, "detection", "rules_export.ndjson"), "utf8");
     const rows = contents.split(/\r?\n/).filter(Boolean).map((line) => JSON.parse(line));
     const rules = ids.map((id) => {
       const rule = rows.find((item) => item.rule_id === id);

@@ -12,8 +12,13 @@ def load_labs():
     labs = {}
     namespaces = set()
     ports = set()
-    for file in sorted(LAB_ROOT.glob("*/lab.json")):
-        config = json.loads(file.read_text(encoding="utf-8"))
+    for file in sorted(LAB_ROOT.glob("*/lab.yaml")):
+        try:
+            config = yaml.safe_load(file.read_text(encoding="utf-8"))
+        except yaml.YAMLError as exc:
+            raise ValueError(f"Invalid YAML in {file}") from exc
+        if not isinstance(config, dict):
+            raise ValueError(f"Invalid lab configuration in {file}")
         lab_id, namespace = config.get("id"), config.get("namespace")
         if not isinstance(lab_id, str) or not re.fullmatch(r"Lab\d+", lab_id):
             raise ValueError(f"Invalid lab id in {file}")
@@ -47,7 +52,7 @@ def validate_manifests(lab):
         raise ValueError("無法讀取 Lab Kubernetes 設定：" + result.stderr.strip()[-300:])
     allowed = {"ConfigMap", "Secret", "Service", "Deployment", "StatefulSet", "DaemonSet", "Job", "PersistentVolumeClaim"}
     namespace = lab["namespace"]
-    namespace_file = yaml.safe_load((lab["directory"] / "00-namespace.yaml").read_text(encoding="utf-8"))
+    namespace_file = yaml.safe_load((lab["directory"] / "k8s" / "00-namespace.yaml").read_text(encoding="utf-8"))
     if not isinstance(namespace_file, dict) or namespace_file.get("kind") != "Namespace" or namespace_file.get("metadata", {}).get("name") != namespace:
         raise ValueError("00-namespace.yaml 與 Lab 的 namespace 不一致")
     found_namespace = False

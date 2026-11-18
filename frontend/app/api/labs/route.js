@@ -1,5 +1,6 @@
 import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
+import { parse } from "yaml";
 
 export const dynamic = "force-dynamic";
 
@@ -11,11 +12,11 @@ export async function GET() {
       .filter((entry) => entry.isDirectory() && /^Lab\d+/.test(entry.name))
       .map(async (entry) => {
         try {
-          const filePath = path.join(labsPath, entry.name, "challenge.json");
-          const config = JSON.parse(await readFile(filePath, "utf8"));
+          const filePath = path.join(labsPath, entry.name, "challenge.yaml");
+          const config = parse(await readFile(filePath, "utf8"));
           const id = config.lab_id || entry.name.match(/^Lab\d+/)?.[0];
           if (!id || !/^Lab\d+$/.test(id)) return null;
-          const labConfig = JSON.parse(await readFile(path.join(labsPath, entry.name, "lab.json"), "utf8"));
+          const labConfig = parse(await readFile(path.join(labsPath, entry.name, "lab.yaml"), "utf8"));
           if (labConfig.id !== id) return null;
           return {
             id,
