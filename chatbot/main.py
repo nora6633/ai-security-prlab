@@ -113,7 +113,7 @@ async def chat(request: ChatRequest):
         try:
             # This judge runs after generation to score challenge objectives;
             # it does not block or replace the model's response.
-            challenge_result = await evaluate_response(base_url, headers, reply, challenge, judge_config)
+            challenge_result = await evaluate_response(base_url, headers, reply, challenge, judge_config, user_message or "")
         except (httpx.HTTPError, KeyError, IndexError, TypeError, ValueError) as exc:
             print(f"challenge_evaluator_error: {type(exc).__name__}", flush=True)
             challenge_result = {
