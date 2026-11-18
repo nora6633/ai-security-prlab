@@ -164,6 +164,7 @@ export default function ChatPage() {
         </div>
       </nav>
 
+      <div className={styles.workspace}>
       <section className={styles.chatCard}>
         <header className={styles.chatHeader}>
           <div className={styles.avatar}>AI</div>
@@ -183,31 +184,7 @@ export default function ChatPage() {
           <button type="button" disabled={busy} className={chatMode === "unguarded" ? styles.modeSelected : ""} onClick={() => switchMode("unguarded")} aria-pressed={chatMode === "unguarded"}>考試模式</button>
         </div>
 
-        {chatMode === "guarded" && <details className={styles.policyPanel}>
-          <summary>護欄設定</summary>
-          {policy ? <form onSubmit={savePolicy}>
-            <fieldset><legend>輸入護欄</legend>
-              <label><input type="checkbox" checked={policy.input.enabled} onChange={(event) => updatePolicy("input", "enabled", event.target.checked)} /> 啟用輸入檢查</label>
-              <label className={styles.policyField}>觸發後
-                <select value={policy.input.action} onChange={(event) => updatePolicy("input", "action", event.target.value)}>
-                  <option value="instruct">加入 system prompt 指示</option>
-                  <option value="custom_response">回傳固定拒答</option>
-                </select>
-              </label>
-              <label className={styles.policyField}>{policy.input.action === "instruct" ? "追加指示" : "固定回覆"}
-                <textarea rows={3} value={policy.input[policy.input.action === "instruct" ? "instruction" : "response"] || ""} onChange={(event) => updatePolicy("input", policy.input.action === "instruct" ? "instruction" : "response", event.target.value)} />
-              </label>
-              <RuleList rules={policy.input.rules} details={inputRuleDetails} onChange={(name, enabled) => updatePolicy("input", "rules", { ...policy.input.rules, [name]: enabled })} />
-            </fieldset>
-            <fieldset><legend>輸出護欄</legend>
-              <label><input type="checkbox" checked={policy.output.enabled} onChange={(event) => updatePolicy("output", "enabled", event.target.checked)} /> 啟用輸出遮罩</label>
-              <RuleList rules={policy.output.rules} details={outputRuleDetails} onChange={(name, enabled) => updatePolicy("output", "rules", { ...policy.output.rules, [name]: enabled })} />
-            </fieldset>
-            <button className={styles.policySave} type="submit" disabled={policyBusy}>{policyBusy ? "儲存中…" : "儲存護欄設定"}</button>
-          </form> : <p>正在讀取護欄設定…</p>}
-          {policyMessage && <p role="status">{policyMessage}</p>}
-          <p>此設定套用於練習模式。</p>
-        </details>}
+
 
         {challenge?.objectives?.length > 0 && <section className={styles.challengePanel} aria-label="過關條件進度">
           <div className={styles.challengeHeading}><strong>過關進度</strong><b>{challenge.objectives.filter((objective) => objectiveResults[objective.id]?.passed).length} / {challenge.objectives.length}</b></div>
@@ -272,6 +249,32 @@ export default function ChatPage() {
         </form>
         <div className={styles.chatFoot}><span>重新整理頁面會清除本次對話。</span><span>{messages.length ? `${messages.length} 則訊息` : `${labId} 測試`}</span></div>
       </section>
+        {chatMode === "guarded" && <details className={styles.policyPanel}>
+          <summary>護欄設定</summary>
+          {policy ? <form onSubmit={savePolicy}>
+            <fieldset><legend>輸入護欄</legend>
+              <label><input type="checkbox" checked={policy.input.enabled} onChange={(event) => updatePolicy("input", "enabled", event.target.checked)} /> 啟用輸入檢查</label>
+              <label className={styles.policyField}>觸發後
+                <select value={policy.input.action} onChange={(event) => updatePolicy("input", "action", event.target.value)}>
+                  <option value="instruct">加入 system prompt 指示</option>
+                  <option value="custom_response">回傳固定拒答</option>
+                </select>
+              </label>
+              <label className={styles.policyField}>{policy.input.action === "instruct" ? "追加指示" : "固定回覆"}
+                <textarea rows={3} value={policy.input[policy.input.action === "instruct" ? "instruction" : "response"] || ""} onChange={(event) => updatePolicy("input", policy.input.action === "instruct" ? "instruction" : "response", event.target.value)} />
+              </label>
+              <RuleList rules={policy.input.rules} details={inputRuleDetails} onChange={(name, enabled) => updatePolicy("input", "rules", { ...policy.input.rules, [name]: enabled })} />
+            </fieldset>
+            <fieldset><legend>輸出護欄</legend>
+              <label><input type="checkbox" checked={policy.output.enabled} onChange={(event) => updatePolicy("output", "enabled", event.target.checked)} /> 啟用輸出遮罩</label>
+              <RuleList rules={policy.output.rules} details={outputRuleDetails} onChange={(name, enabled) => updatePolicy("output", "rules", { ...policy.output.rules, [name]: enabled })} />
+            </fieldset>
+            <button className={styles.policySave} type="submit" disabled={policyBusy}>{policyBusy ? "儲存中…" : "儲存護欄設定"}</button>
+          </form> : <p>正在讀取護欄設定…</p>}
+          {policyMessage && <p role="status">{policyMessage}</p>}
+          <p>此設定套用於練習模式。</p>
+        </details>}
+      </div>
       <footer className={styles.footer}><span>TWISC @ NTUST · AI SECURITY LAB</span><span>CHAT TEST · PROMPT INJECTION</span></footer>
     </main>
   );
