@@ -13,17 +13,7 @@
       }
     },
     "output": {
-      "enabled": true,
-      "rules": {
-        "openai_api_key": true,
-        "github_token": true,
-        "aws_access_key": true,
-        "bearer_token": true,
-        "jwt": true,
-        "private_key": true,
-        "connection_string": true,
-        "secret_assignment": true
-      }
+      "enabled": true
     },
     "judge": {
       "type": "guardrail",

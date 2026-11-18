@@ -10,15 +10,6 @@ guardrail:
       secret_extraction: false
   output:
     enabled: false
-    rules:
-      openai_api_key: false
-      github_token: false
-      aws_access_key: false
-      bearer_token: false
-      jwt: false
-      private_key: false
-      connection_string: false
-      secret_assignment: false
 judge:
   type: ai_judge
   model: qwen3.8:27b

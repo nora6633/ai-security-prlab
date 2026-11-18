@@ -1,4 +1,5 @@
 import os
+import asyncio
 import time
 import uuid
 from threading import Lock
@@ -138,7 +139,11 @@ async def chat(request: ChatRequest):
 
     try:
         reply = data["choices"][0]["message"]["content"]
-        output_guardrail = inspect_output(reply, guardrail_config)
+        try:
+            output_guardrail = await asyncio.to_thread(inspect_output, reply, guardrail_config)
+        except RuntimeError as exc:
+            print("output_guardrail_error: scan failed", flush=True)
+            raise HTTPException(status_code=503, detail="輸出遮罩檢查失敗，請稍後重試。") from exc
         reply = output_guardrail.content
         if user_message is not None:
             log_chat_turn(user_message, reply)

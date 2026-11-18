@@ -25,7 +25,6 @@ from cryptography.x509.oid import ExtendedKeyUsageOID, NameOID
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "chatbot"))
 from input_guardrail import _RULES as INPUT_RULES
-from output_guardrail import _OUTPUT_RULES as OUTPUT_RULES
 
 LAB_ROOT = ROOT / "Lab"
 LAB_CONTEXT = threading.local()
@@ -523,7 +522,6 @@ class Handler(BaseHTTPRequestHandler):
                     "enabled": policy.get("enabled", True), "input": policy["input"], "output": policy["output"],
                     "patterns": {
                         "input": {name: INPUT_RULES[name].pattern for name in policy["input"].get("rules", {}) if name in INPUT_RULES},
-                        "output": {name: OUTPUT_RULES[name].pattern for name in policy["output"].get("rules", {}) if name in OUTPUT_RULES},
                     },
                 })
             except (OSError, ValueError, KeyError, yaml.YAMLError) as exc:
@@ -627,11 +625,14 @@ class Handler(BaseHTTPRequestHandler):
                         if not isinstance(value, dict) or type(value.get("enabled")) is not bool:
                             raise ValueError(f"{section} 設定無效")
                         current = policy[section]
-                        rules = value.get("rules")
-                        if not isinstance(rules, dict) or set(rules) != set(current.get("rules", {})) or any(type(v) is not bool for v in rules.values()):
-                            raise ValueError(f"{section} 規則無效")
                         current["enabled"] = value["enabled"]
-                        current["rules"] = rules
+                        if section == "input":
+                            rules = value.get("rules")
+                            if not isinstance(rules, dict) or set(rules) != set(current.get("rules", {})) or any(type(v) is not bool for v in rules.values()):
+                                raise ValueError("input 規則無效")
+                            current["rules"] = rules
+                        else:
+                            current.pop("rules", None)
                     inp = incoming["input"]
                     if inp.get("action") not in ("instruct", "custom_response"):
                         raise ValueError("輸入處理方式無效")

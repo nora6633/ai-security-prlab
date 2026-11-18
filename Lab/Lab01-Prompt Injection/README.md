@@ -19,3 +19,5 @@
 - `detection/rules_export.ndjson`：啟動時匯入的 Elastic 偵測規則。
 - `k8s/`：Kibana、Elasticsearch 等服務各自的 Kubernetes 資源。
 - `kustomization.yaml`：組合本關資源與設定。
+
+練習模式的輸出遮罩使用 Gitleaks 偵測並遮罩符合規則的憑證；可在聊天室開啟或關閉。
