@@ -3,7 +3,6 @@ kind: Kustomization
 namespace: lab
 resources:
   - 00-namespace.yaml
-  - 10-postgres.yaml
   - 20-elasticsearch.yaml
   - 30-kibana.yaml
   - 40-filebeat.yaml

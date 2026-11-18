@@ -8,7 +8,7 @@
 2. 建立專案根目錄的 `chatbot/openwebui-secret.env`，填入 `api-key=你的金鑰`。
 3. 啟動平台後，從首頁進入 Lab01，點選「啟動 Lab」。Kibana 網址及登入資訊會顯示在 Lab 頁面。
 
-關閉 Lab 會刪除 PVC，並清空 PostgreSQL 和 Elasticsearch 的實驗資料。
+關閉 Lab 會刪除 PVC，並清空 Elasticsearch 的實驗資料。
 
 ## 設定檔
 
