@@ -1,0 +1,73 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: import-elastic-detection-rules
+  namespace: lab
+spec:
+  ttlSecondsAfterFinished: 60
+  backoffLimit: 2
+  activeDeadlineSeconds: 240
+  template:
+    metadata:
+      labels:
+        app: import-elastic-detection-rules
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: import-rules
+          image: curlimages/curl:8.10.1
+          env:
+            - name: ELASTIC_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: elastic-credentials
+                  key: password
+          command: ["/bin/sh", "-ec"]
+          args:
+            - |
+              attempt=0
+              until curl --fail --silent -u "elastic:${ELASTIC_PASSWORD}" http://kibana:5601/api/status >/dev/null; do
+                attempt=$((attempt + 1))
+                if [ "$attempt" -ge 90 ]; then
+                  echo "Kibana API did not become ready in time" >&2
+                  exit 1
+                fi
+                sleep 2
+              done
+              curl --fail --silent --show-error \
+                -u "elastic:${ELASTIC_PASSWORD}" \
+                -H 'kbn-xsrf: true' \
+                -F 'file=@/rules/rules_export.ndjson' \
+                -o /tmp/import-result.json \
+                'http://kibana:5601/api/detection_engine/rules/_import?overwrite=true'
+              cat /tmp/import-result.json
+              grep -q '"success":true' /tmp/import-result.json
+              grep -q '"errors":\[\]' /tmp/import-result.json
+              if ! curl --fail --silent \
+                -H 'kbn-xsrf: true' \
+                -u "elastic:${ELASTIC_PASSWORD}" \
+                http://kibana:5601/api/data_views/data_view/lab-filebeat-logs \
+                -o /tmp/data-view.json; then
+                curl --fail --silent --show-error \
+                  -H 'kbn-xsrf: true' \
+                  -u "elastic:${ELASTIC_PASSWORD}" \
+                  -H 'Content-Type: application/json' \
+                  -d '{"data_view":{"id":"lab-filebeat-logs","name":"Lab 01 container and chatbot logs","title":"filebeat-*","timeFieldName":"@timestamp","allowNoIndex":true}}' \
+                  -o /tmp/data-view.json \
+                  http://kibana:5601/api/data_views/data_view
+              fi
+              curl --fail --silent --show-error \
+                -H 'kbn-xsrf: true' \
+                -u "elastic:${ELASTIC_PASSWORD}" \
+                -H 'Content-Type: application/json' \
+                -d '{"data_view_id":"lab-filebeat-logs","force":true}' \
+                -o /tmp/default-data-view.json \
+                http://kibana:5601/api/data_views/default
+          volumeMounts:
+            - name: rules
+              mountPath: /rules
+              readOnly: true
+      volumes:
+        - name: rules
+          configMap:
+            name: elastic-detection-rules
