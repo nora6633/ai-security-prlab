@@ -34,7 +34,10 @@ SECRET_FILE = ROOT / "chatbot" / "openwebui-secret.env"
 JOBS = {}
 JOBS_LOCK = threading.Lock()
 PORT_FORWARDS = {}
+# Forwards the watchdog keeps alive: forward_id -> (lab, service, local_port, target_port).
+PORT_FORWARD_SPECS = {}
 PORT_LOCK = threading.Lock()
+PORT_WATCH_INTERVAL = 3
 POLICY_LOCK = threading.Lock()
 CLUSTER = "kind"
 
@@ -186,9 +189,11 @@ def ensure_elastic_certificates(job_id):
     add_log(job_id, "TLS 憑證已存入 Kubernetes Secret；私鑰不會寫入專案檔案。")
 
 
-def start_port_forward(job_id, service, local_port, target_port):
+def start_port_forward(job_id, service, local_port, target_port, only_if_tracked=False):
     forward_id = f"{current_lab()['id']}:{service}:{local_port}"
     with PORT_LOCK:
+        if only_if_tracked and forward_id not in PORT_FORWARD_SPECS:
+            return
         proc = PORT_FORWARDS.get(forward_id)
         if proc and proc.poll() is None:
             try:
@@ -218,6 +223,7 @@ def start_port_forward(job_id, service, local_port, target_port):
         except OSError as exc:
             raise RuntimeError(f"無法啟動 {service} 的本機連接埠轉送：{exc}") from exc
         PORT_FORWARDS[forward_id] = proc
+        PORT_FORWARD_SPECS[forward_id] = (current_lab(), service, local_port, target_port)
 
     deadline = time.time() + 12
     while time.time() < deadline:
@@ -239,6 +245,25 @@ def stop_port_forwards(lab_id=None):
             if proc.poll() is None:
                 proc.terminate()
             PORT_FORWARDS.pop(key, None)
+        for key in list(PORT_FORWARD_SPECS):
+            if lab_id is None or key.startswith(f"{lab_id}:"):
+                PORT_FORWARD_SPECS.pop(key, None)
+
+
+def watch_port_forwards():
+    # kubectl port-forward exits when the pod behind the service is replaced
+    # (for example after a rollout), so reconnect tracked forwards in the background.
+    while True:
+        time.sleep(PORT_WATCH_INTERVAL)
+        with PORT_LOCK:
+            dead = [spec for key, spec in PORT_FORWARD_SPECS.items()
+                    if key not in PORT_FORWARDS or PORT_FORWARDS[key].poll() is not None]
+        for lab, service, local_port, target_port in dead:
+            LAB_CONTEXT.lab = lab
+            try:
+                start_port_forward("", service, local_port, target_port, only_if_tracked=True)
+            except RuntimeError:
+                pass  # The pod may not be ready yet; retry on the next pass.
 
 
 def service_addresses():
@@ -677,6 +702,7 @@ class Handler(BaseHTTPRequestHandler):
 
 
 if __name__ == "__main__":
+    threading.Thread(target=watch_port_forwards, daemon=True).start()
     server = ThreadingHTTPServer(("127.0.0.1", 8081), Handler)
     print("Lab controller listening on http://127.0.0.1:8081")
     server.serve_forever()
