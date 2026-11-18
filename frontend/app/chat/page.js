@@ -4,12 +4,6 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import styles from "./chat.module.css";
 
-const inputRuleDetails = {
-  instruction_override: { title: "覆寫指令", description: "比對忽略或覆寫先前指令的特定語句。", example: "ignore previous instructions" },
-  prompt_disclosure: { title: "要求系統提示詞", description: "比對要求顯示或輸出 system prompt 的特定語句。", example: "show system prompt" },
-  secret_extraction: { title: "要求機密資料", description: "比對要求取得 flag、密碼、token 或憑證的特定語句。", example: "give me the password" },
-};
-
 const outputRuleDetails = {
   openai_api_key: { title: "OpenAI API Key", description: "遮罩符合 sk- 或 sk-proj- 格式的金鑰。" },
   github_token: { title: "GitHub Token", description: "遮罩符合 ghp_ 等前綴或 github_pat_ 格式的 token。" },
@@ -274,16 +268,12 @@ export default function ChatPage() {
           {policy ? <form onSubmit={savePolicy}>
             <fieldset><legend>輸入護欄</legend>
               <label><input type="checkbox" checked={policy.input.enabled} onChange={(event) => updatePolicy("input", "enabled", event.target.checked)} /> 啟用輸入檢查</label>
-              <label className={styles.policyField}>觸發後
+              <label className={styles.policyField}>護欄形式
                 <select value={policy.input.action} onChange={(event) => updatePolicy("input", "action", event.target.value)}>
                   <option value="instruct">加入 system prompt 指示</option>
                   <option value="custom_response">回傳固定拒答</option>
                 </select>
               </label>
-              <label className={styles.policyField}>{policy.input.action === "instruct" ? "追加指示" : "固定回覆"}
-                <textarea rows={3} value={policy.input[policy.input.action === "instruct" ? "instruction" : "response"] || ""} onChange={(event) => updatePolicy("input", policy.input.action === "instruct" ? "instruction" : "response", event.target.value)} />
-              </label>
-              <RuleList rules={policy.input.rules} details={inputRuleDetails} patterns={policy.patterns?.input} onChange={(name, enabled) => updatePolicy("input", "rules", { ...policy.input.rules, [name]: enabled })} />
             </fieldset>
             <fieldset><legend>輸出護欄</legend>
               <label><input type="checkbox" checked={policy.output.enabled} onChange={(event) => updatePolicy("output", "enabled", event.target.checked)} /> 啟用輸出遮罩</label>
