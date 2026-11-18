@@ -19,6 +19,7 @@ from guardrail import (
     judge_settings,
     load_challenge,
     load_config,
+    output_settings,
     refusal_for,
 )
 
@@ -140,6 +141,8 @@ async def chat(request: ChatRequest):
         guardrail_config = load_config(os.getenv("GUARDRAIL_CONFIG"))
         challenge = load_challenge(os.getenv("CHALLENGE_CONFIG"))
         judge_config = judge_settings(guardrail_config)
+        if any(name not in challenge["_references"] for name in output_settings(guardrail_config).get("references", [])):
+            raise ValueError("Output guardrail references an unknown challenge value")
     except ValueError as exc:
         raise HTTPException(status_code=503, detail="Chatbot lab configuration is invalid") from exc
     refusal = refusal_for(guardrail_config)
@@ -167,11 +170,7 @@ async def chat(request: ChatRequest):
     except (KeyError, IndexError, TypeError, AttributeError) as exc:
         raise HTTPException(status_code=502, detail="Unexpected response from Open WebUI") from exc
 
-    try:
-        output_decision = await inspect_output(reply, guardrail_config)
-    except RuntimeError as exc:
-        print("output_guardrail_error: scan failed", flush=True)
-        raise HTTPException(status_code=503, detail="輸出護欄檢查失敗，請稍後重試。") from exc
+    output_decision = inspect_output(reply, guardrail_config, challenge["_references"])
     if output_decision.triggered:
         # The blocked reply is not logged so the secret does not reach Elasticsearch.
         print(f"output_guardrail_alert: categories={','.join(output_decision.categories)}", flush=True)

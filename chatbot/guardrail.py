@@ -68,6 +68,9 @@ def load_config(path: str | Path | None = None) -> dict[str, Any]:
         raise ValueError("guardrail.output must be an object")
     if not isinstance(output_config.get("enabled", False), bool):
         raise ValueError("guardrail.output.enabled must be true or false")
+    output_references = output_config.get("references", [])
+    if not isinstance(output_references, list) or any(not isinstance(item, str) or not item for item in output_references):
+        raise ValueError("guardrail.output.references must be a list of challenge reference names")
     judge = config.get("judge", guardrail.get("judge"))
     if not isinstance(judge, dict) or judge.get("type") not in {"guardrail", "ai_judge", "ai_confidence"}:
         raise ValueError("guardrail.judge.type must be 'guardrail' or 'ai_judge'")

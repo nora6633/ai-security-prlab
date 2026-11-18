@@ -8,7 +8,6 @@ resources:
   - k8s/30-kibana.yaml
   - k8s/40-filebeat.yaml
   - k8s/50-chatbot.yaml
-  - k8s/55-output-masker.yaml
   - k8s/60-alert-rules.yaml
 configMapGenerator:
   - name: chatbot-challenge

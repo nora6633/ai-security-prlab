@@ -282,7 +282,7 @@ export default function ChatPage() {
               <label><input type="checkbox" checked={policy.input.enabled} onChange={(event) => updatePolicy("input", "enabled", event.target.checked)} /> 命中偵測規則關鍵字時拒答</label>
             </fieldset>
             <fieldset><legend>輸出護欄</legend>
-              <label><input type="checkbox" checked={policy.output.enabled} onChange={(event) => updatePolicy("output", "enabled", event.target.checked)} /> 偵測到敏感資料時拒答</label>
+              <label><input type="checkbox" checked={policy.output.enabled} onChange={(event) => updatePolicy("output", "enabled", event.target.checked)} /> 回覆含資料庫帳號或密碼時拒答</label>
             </fieldset>
             <button className={styles.policySave} type="submit" disabled={policyBusy}>{policyBusy ? "儲存中…" : "儲存護欄設定"}</button>
           </form> : <p>正在讀取護欄設定…</p>}

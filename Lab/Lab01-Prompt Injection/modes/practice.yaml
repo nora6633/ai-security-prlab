@@ -7,6 +7,9 @@ guardrail:
     - a2a-poison-001
   output:
     enabled: true
+    references:
+    - postgres_username
+    - postgres_password
 judge:
   type: guardrail
   objectives:

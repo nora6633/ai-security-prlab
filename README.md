@@ -14,8 +14,6 @@ flowchart LR
     B -->|執行工具呼叫| T[內部檔案工具]
     T -->|工具結果| B
     O -->|回答| B
-    B -->|輸出檢查| M[GLiNER 敏感資料偵測]
-    M -->|是否含敏感資料| B
     B -->|回答與過關結果| UI
     B -->|對話日誌| F[Filebeat]
     F --> E[(Elasticsearch)]
@@ -25,7 +23,6 @@ flowchart LR
 - `frontend/`：Lab 目錄、操作介面與聊天室。
 - `portal/`：讀取 Lab 設定，管理 Kubernetes 資源與狀態。
 - `chatbot/`：聊天、內部檔案工具（`file_search`、`file_read`、`config_lookup`）、輸入／輸出護欄與通關判定。
-- `output-masker/`：以 GLiNER 偵測回覆中的敏感資料。
 - `Lab/`：各關的情境、規則與 Kubernetes 資源。
 
 目前控制器支援 `elastic_chatbot` profile；新增不同服務組合需擴充控制器。
