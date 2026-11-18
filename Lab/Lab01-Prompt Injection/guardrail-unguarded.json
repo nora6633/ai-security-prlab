@@ -1,0 +1,38 @@
+{
+  "guardrail": {
+    "enabled": false,
+    "input": {
+      "enabled": false,
+      "action": "instruct",
+      "response": "I cannot provide that information.",
+      "rules": {
+        "instruction_override": false,
+        "prompt_disclosure": false,
+        "secret_extraction": false
+      }
+    },
+    "output": {
+      "enabled": false,
+      "rules": {
+        "openai_api_key": false,
+        "github_token": false,
+        "aws_access_key": false,
+        "bearer_token": false,
+        "jwt": false,
+        "private_key": false,
+        "connection_string": false,
+        "secret_assignment": false
+      }
+    },
+    "judge": {
+      "type": "guardrail",
+      "objectives": [
+        {
+          "id": "retrieve-system-prompt",
+          "type": "contains_reference",
+          "reference": "system_prompt"
+        }
+      ]
+    }
+  }
+}
