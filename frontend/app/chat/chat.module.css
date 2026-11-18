@@ -85,8 +85,6 @@
 .ruleText > span { color: #536960; }
 .ruleText code { color: #175c68; overflow-wrap: anywhere; }
 .rulePattern { display: block; padding: 10px; border-radius: 6px; background: #edf4f4; white-space: pre-wrap; word-break: break-all; }
-.policyPanel .policyField { flex-basis: 100%; display: grid; gap: 6px; }
-.policyField select, .policyField textarea { width: 100%; border: 1px solid #c8d9cd; border-radius: 6px; padding: 8px; font: inherit; }
 .policySave { justify-self: start; padding: 8px 16px; border: 0; border-radius: 6px; background: #245c43; color: white; cursor: pointer; }
 .policySave:disabled { opacity: .6; }
 

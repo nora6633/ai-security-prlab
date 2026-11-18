@@ -8,7 +8,6 @@ import base64
 import secrets
 import socket
 import subprocess
-import sys
 import threading
 import time
 import uuid
@@ -23,8 +22,6 @@ from cryptography.x509.oid import ExtendedKeyUsageOID, NameOID
 
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "chatbot"))
-from input_guardrail import _RULES as INPUT_RULES
 
 LAB_ROOT = ROOT / "Lab"
 LAB_CONTEXT = threading.local()
@@ -355,9 +352,9 @@ def run_start(job_id, lab):
         ("檢查 Docker", ["docker", "info"], 90),
         ("確認 kind 叢集", None, 30),
         ("建置 FastAPI chatbot 映像", ["docker", "build", "-t", "lab-chatbot:dev", str(ROOT / "chatbot")], 240),
-        ("建置輸出遮罩服務映像", ["docker", "build", "-t", "lab-output-masker:dev", str(ROOT / "output-masker")], 1200),
+        ("建置輸出偵測服務映像", ["docker", "build", "-t", "lab-output-masker:dev", str(ROOT / "output-masker")], 1200),
         ("載入映像至 kind", ["kind", "load", "docker-image", "lab-chatbot:dev", "--name", CLUSTER], 180),
-        ("載入輸出遮罩服務至 kind", ["kind", "load", "docker-image", "lab-output-masker:dev", "--name", CLUSTER], 600),
+        ("載入輸出偵測服務至 kind", ["kind", "load", "docker-image", "lab-output-masker:dev", "--name", CLUSTER], 600),
         ("建立 lab namespace", ["kubectl", "apply", "-f", str(current_lab()["directory"] / "k8s" / "00-namespace.yaml")], 45),
         ("清除舊的規則匯入 Job", ["kubectl", "-n", current_lab()["namespace"], "delete", "job", "import-elastic-detection-rules", "--ignore-not-found=true"], 30),
     ]
@@ -520,12 +517,7 @@ class Handler(BaseHTTPRequestHandler):
                     return
                 with POLICY_LOCK:
                     policy = yaml.safe_load((lab["directory"] / "modes" / "practice.yaml").read_text(encoding="utf-8"))["guardrail"]
-                self._send(200, {
-                    "enabled": policy.get("enabled", True), "input": policy["input"], "output": policy["output"],
-                    "patterns": {
-                        "input": {name: INPUT_RULES[name].pattern for name in policy["input"].get("rules", {}) if name in INPUT_RULES},
-                    },
-                })
+                self._send(200, {"enabled": policy.get("enabled", True), "input": policy["input"], "output": policy["output"]})
             except (OSError, ValueError, KeyError, yaml.YAMLError) as exc:
                 self._send(503, {"error": f"無法讀取護欄設定：{exc}"})
             return
@@ -626,23 +618,7 @@ class Handler(BaseHTTPRequestHandler):
                         value = incoming.get(section)
                         if not isinstance(value, dict) or type(value.get("enabled")) is not bool:
                             raise ValueError(f"{section} 設定無效")
-                        current = policy[section]
-                        current["enabled"] = value["enabled"]
-                        if section == "input":
-                            rules = value.get("rules")
-                            if not isinstance(rules, dict) or set(rules) != set(current.get("rules", {})) or any(type(v) is not bool for v in rules.values()):
-                                raise ValueError("input 規則無效")
-                            current["rules"] = rules
-                        else:
-                            current.pop("rules", None)
-                    inp = incoming["input"]
-                    if inp.get("action") not in ("instruct", "custom_response"):
-                        raise ValueError("輸入處理方式無效")
-                    for field in ("instruction", "response"):
-                        if not isinstance(inp.get(field), str) or not inp[field].strip() or len(inp[field]) > 8000:
-                            raise ValueError(f"{field} 不可為空或過長")
-                        policy["input"][field] = inp[field]
-                    policy["input"]["action"] = inp["action"]
+                        policy[section]["enabled"] = value["enabled"]
                     policy["enabled"] = True
                     temporary = path.with_name(f".{path.name}.{uuid.uuid4().hex}.tmp")
                     try:

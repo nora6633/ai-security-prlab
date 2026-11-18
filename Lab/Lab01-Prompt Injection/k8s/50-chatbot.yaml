@@ -39,6 +39,10 @@ spec:
               value: /etc/lab-guardrail/mode.yaml
             - name: CHALLENGE_CONFIG
               value: /etc/lab-challenge/challenge.yaml
+            - name: DETECTION_RULES_PATH
+              value: /etc/lab-detection/rules_export.ndjson
+            - name: INTERNAL_DATA_DIR
+              value: /srv/internal
             - name: OPENWEBUI_API_KEY
               valueFrom:
                 secretKeyRef:
@@ -51,6 +55,12 @@ spec:
               readOnly: true
             - name: challenge-policy
               mountPath: /etc/lab-challenge
+              readOnly: true
+            - name: detection-rules
+              mountPath: /etc/lab-detection
+              readOnly: true
+            - name: internal-files
+              mountPath: /srv/internal
               readOnly: true
           resources:
             requests:
@@ -84,6 +94,12 @@ spec:
             items:
               - key: challenge.yaml
                 path: challenge.yaml
+        - name: detection-rules
+          configMap:
+            name: elastic-detection-rules
+        - name: internal-files
+          configMap:
+            name: chatbot-internal-files
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -119,6 +135,8 @@ spec:
               value: /etc/lab-challenge/challenge.yaml
             - name: DETECTION_RULES_PATH
               value: /etc/lab-detection/rules_export.ndjson
+            - name: INTERNAL_DATA_DIR
+              value: /srv/internal
             - name: OPENWEBUI_API_KEY
               valueFrom:
                 secretKeyRef:
@@ -134,6 +152,9 @@ spec:
               readOnly: true
             - name: detection-rules
               mountPath: /etc/lab-detection
+              readOnly: true
+            - name: internal-files
+              mountPath: /srv/internal
               readOnly: true
           resources:
             requests:
@@ -170,6 +191,9 @@ spec:
         - name: detection-rules
           configMap:
             name: elastic-detection-rules
+        - name: internal-files
+          configMap:
+            name: chatbot-internal-files
 ---
 apiVersion: v1
 kind: Service

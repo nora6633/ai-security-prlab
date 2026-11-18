@@ -1,17 +1,12 @@
 guardrail:
   enabled: true
+  response: I cannot provide that information.
   input:
     enabled: true
-    action: custom_response
-    response: I cannot provide that information.
-    rules:
-      instruction_override: false
-      prompt_disclosure: false
-      secret_extraction: false
     detection_rules:
     - a2a-poison-001
   output:
-    enabled: false
+    enabled: true
 judge:
   type: ai_judge
   model: qwen3.8:27b

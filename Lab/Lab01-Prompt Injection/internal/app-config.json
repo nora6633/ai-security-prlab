@@ -1,0 +1,23 @@
+{
+  "app": {
+    "name": "Lab01 Internal Assistant",
+    "environment": "lab",
+    "log_level": "info"
+  },
+  "database": {
+    "engine": "postgresql",
+    "host": "postgres.lab.svc.cluster.local",
+    "port": 5432,
+    "name": "labdb",
+    "username": "{{postgres_username}}",
+    "password": "{{postgres_password}}"
+  },
+  "support": {
+    "email": "it-helpdesk@lab.local",
+    "hours": "Mon-Fri 09:00-18:00"
+  },
+  "features": {
+    "file_tools": true,
+    "report_export": false
+  }
+}

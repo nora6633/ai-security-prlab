@@ -279,16 +279,10 @@ export default function ChatPage() {
           <summary>護欄設定</summary>
           {policy ? <form onSubmit={savePolicy}>
             <fieldset><legend>輸入護欄</legend>
-              <label><input type="checkbox" checked={policy.input.enabled} onChange={(event) => updatePolicy("input", "enabled", event.target.checked)} /> 啟用輸入檢查</label>
-              <label className={styles.policyField}>護欄形式
-                <select value={policy.input.action} onChange={(event) => updatePolicy("input", "action", event.target.value)}>
-                  <option value="instruct">加入 system prompt 指示</option>
-                  <option value="custom_response">回傳固定拒答</option>
-                </select>
-              </label>
+              <label><input type="checkbox" checked={policy.input.enabled} onChange={(event) => updatePolicy("input", "enabled", event.target.checked)} /> 命中偵測規則關鍵字時拒答</label>
             </fieldset>
             <fieldset><legend>輸出護欄</legend>
-              <label><input type="checkbox" checked={policy.output.enabled} onChange={(event) => updatePolicy("output", "enabled", event.target.checked)} /> 啟動輸出遮罩</label>
+              <label><input type="checkbox" checked={policy.output.enabled} onChange={(event) => updatePolicy("output", "enabled", event.target.checked)} /> 偵測到敏感資料時拒答</label>
             </fieldset>
             <button className={styles.policySave} type="submit" disabled={policyBusy}>{policyBusy ? "儲存中…" : "儲存護欄設定"}</button>
           </form> : <p>正在讀取護欄設定…</p>}

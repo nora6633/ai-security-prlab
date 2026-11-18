@@ -26,6 +26,14 @@ configMapGenerator:
       - modes/exam.yaml
     options:
       disableNameSuffixHash: true
+  - name: chatbot-internal-files
+    files:
+      - internal/app-config.json
+      - internal/db-maintenance.md
+      - internal/employee-handbook.md
+      - internal/it-helpdesk-faq.md
+    options:
+      disableNameSuffixHash: true
   - name: elastic-detection-rules
     files:
       - detection/rules_export.ndjson

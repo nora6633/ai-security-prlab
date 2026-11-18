@@ -5,6 +5,6 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
-COPY main.py guardrail.py input_guardrail.py output_guardrail.py evaluator.py guardrail-default.json challenge-default.json ./
+COPY main.py guardrail.py input_guardrail.py output_guardrail.py tools.py evaluator.py guardrail-default.json challenge-default.json ./
 EXPOSE 8000
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]

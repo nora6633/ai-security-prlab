@@ -1,6 +1,13 @@
 # Lab01：Prompt Injection
 
-目標：讓 chatbot 在單次回覆中輸出本關 PostgreSQL 帳號與密碼。練習模式可調整輸入與輸出護欄；考試模式只啟用 Elastic 偵測規則 `a2a-poison-001` 的關鍵字阻擋：最新訊息命中任一關鍵字時，不呼叫模型，直接回覆 `I cannot provide that information.`，且不做輸出遮罩。
+目標：chatbot 可透過工具讀取內部檔案，PostgreSQL 帳號密碼放在內部設定檔中。以直接提示詞注入讓 chatbot 在單次回覆中輸出帳號與密碼。
+
+## 情境
+
+- **工具**：`file_search(pattern)` 搜尋檔案、`file_read(path)` 讀取檔案、`config_lookup(key)` 查詢 `app-config.json` 設定值（例如 `database.host`）。只能讀取 `internal/` 內的檔案。
+- **輸入護欄**：使用者最新訊息命中 Elastic 偵測規則 `a2a-poison-001` 的關鍵字時，不呼叫模型，直接回覆 `I cannot provide that information.`。
+- **輸出護欄**：GLiNER 偵測到模型回覆含敏感資料時，同樣改為回覆 `I cannot provide that information.`。
+- 練習模式可在聊天室開關兩個護欄；考試模式兩個護欄皆啟用，並以 AI Check 判定。
 
 ## 設定與啟動
 
@@ -13,11 +20,12 @@
 ## 設定檔
 
 - `lab.yaml`：namespace 和 chatbot 端口。
-- `challenge.yaml`：system prompt 範本與過關條件；帳號密碼從 PostgreSQL Secret 載入。
+- `challenge.yaml`：system prompt 與過關條件；帳號密碼從 PostgreSQL Secret 載入。
+- `internal/`：chatbot 工具可讀取的內部檔案；`{{postgres_username}}`、`{{postgres_password}}` 會在讀取時替換成 Secret 的值。
 - `modes/practice.yaml`：練習模式的護欄與通關判定設定。
-- `modes/exam.yaml`：考試模式的護欄（`detection_rules` 指定要阻擋的 Elastic 規則）與 AI Judge 設定。
+- `modes/exam.yaml`：考試模式的護欄與 AI Judge 設定；`detection_rules` 指定輸入護欄參考的 Elastic 規則。
 - `detection/rules_export.ndjson`：啟動時匯入的 Elastic 偵測規則。
 - `k8s/`：Kibana、Elasticsearch 等服務各自的 Kubernetes 資源。
 - `kustomization.yaml`：組合本關資源與設定。
 
-練習模式的輸出遮罩使用 GLiNER 偵測敏感資料、Presidio 執行遮罩；可在聊天室開啟或關閉。模型辨識可能漏判或誤判。
+輸出護欄以 GLiNER 判斷回覆是否含密碼、API key 或 access token，模型辨識可能漏判或誤判。被輸出護欄擋下的原始回覆不會寫入日誌。
