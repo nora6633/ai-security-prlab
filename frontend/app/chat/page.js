@@ -9,7 +9,7 @@ export default function ChatPage() {
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
   const [checking, setChecking] = useState(false);
-  const [turnId, setTurnId] = useState(null);
+  const [turnIds, setTurnIds] = useState([]);
   const [status, setStatus] = useState({ loading: true, running: false });
   const [error, setError] = useState("");
   const [challenge, setChallenge] = useState(null);
@@ -76,7 +76,7 @@ export default function ChatPage() {
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.detail || "聊天請求失敗。");
-      setTurnId(data.turn_id || null);
+      if (data.turn_id) setTurnIds((current) => [...current, data.turn_id]);
       if (data.challenge?.objectives) {
         setObjectiveResults((current) => Object.fromEntries([
           ...Object.entries(current),
@@ -96,12 +96,12 @@ export default function ChatPage() {
   }
 
   async function checkAnswer() {
-    if (!turnId || checking || busy) return;
+    if (!turnIds.length || checking || busy) return;
     setChecking(true);
     setChallengeError("");
     try {
       const response = await fetch(`/api/evaluate?lab=${encodeURIComponent(labId)}&mode=${chatMode}`, {
-        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ turn_id: turnId }),
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ turn_ids: turnIds }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.detail || "AI Check 失敗。");
@@ -144,7 +144,7 @@ export default function ChatPage() {
     if (mode === chatMode) return;
     setChatMode(mode);
     setMessages([]);
-    setTurnId(null);
+    setTurnIds([]);
     setObjectiveResults({});
     setError("");
     setChallengeError("");
@@ -177,7 +177,7 @@ export default function ChatPage() {
             <h1>測試聊天室</h1>
             <p>直接輸入訊息，測試 Lab chatbot。</p>
           </div>
-          <button className={styles.clearButton} type="button" onClick={() => { setMessages([]); setTurnId(null); setError(""); }} disabled={busy || checking || !messages.length}>
+          <button className={styles.clearButton} type="button" onClick={() => { setMessages([]); setTurnIds([]); setObjectiveResults({}); setChallengeError(""); setError(""); }} disabled={busy || checking || !messages.length}>
             新對話
           </button>
         </header>
@@ -203,7 +203,7 @@ export default function ChatPage() {
               </div>;
             })}
           </div>
-          {chatMode === "unguarded" && <button type="button" className={styles.checkButton} onClick={checkAnswer} disabled={!turnId || busy || checking || !status.running}>{checking ? "正在檢查…" : "AI Check"}</button>}
+          {chatMode === "unguarded" && <button type="button" className={styles.checkButton} onClick={checkAnswer} disabled={!turnIds.length || busy || checking || !status.running}>{checking ? "正在檢查…" : "AI Check"}</button>}
           {challengeError && <div className={styles.challengeError}>{challengeError}</div>}
         </section>}
 

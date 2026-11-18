@@ -37,26 +37,24 @@ class ChatRequest(BaseModel):
 
 
 class EvaluateRequest(BaseModel):
-    turn_id: str = Field(min_length=1, max_length=64)
+    turn_ids: list[str] = Field(min_length=1, max_length=1000)
 
 
 @app.post("/evaluate")
 async def evaluate(request: EvaluateRequest):
     now = time.monotonic()
     with turns_lock:
-        turn = turns.get(request.turn_id)
-        if turn and now - turn[0] > TURN_TTL_SECONDS:
-            turns.pop(request.turn_id, None)
-            turn = None
-    if not turn:
-        raise HTTPException(status_code=404, detail="找不到聊天紀錄，請重新傳送訊息後再檢查。")
+        saved_turns = [turns.get(turn_id) for turn_id in request.turn_ids]
+    if any(not turn or now - turn[0] > TURN_TTL_SECONDS for turn in saved_turns):
+        raise HTTPException(status_code=404, detail="部分聊天紀錄已過期，請重新開始對話後再檢查。")
     try:
         config = load_config(os.getenv("GUARDRAIL_CONFIG"))
         challenge = load_challenge(os.getenv("CHALLENGE_CONFIG"))
         headers = {"Content-Type": "application/json"}
         if os.getenv("OPENWEBUI_API_KEY"):
             headers["Authorization"] = f"Bearer {os.environ['OPENWEBUI_API_KEY']}"
-        return await evaluate_response(os.getenv("BASEURL", "http://host.docker.internal:8080").rstrip("/"), headers, turn[2], challenge, judge_settings(config), turn[1])
+        responses = [turn[2] for turn in saved_turns]
+        return await evaluate_response(os.getenv("BASEURL", "http://host.docker.internal:8080").rstrip("/"), headers, responses, challenge, judge_settings(config))
     except (httpx.HTTPError, KeyError, IndexError, TypeError, ValueError) as exc:
         print(f"challenge_evaluator_error: {type(exc).__name__}", flush=True)
         raise HTTPException(status_code=502, detail="AI Check 無法完成，請確認評分器與模型服務。") from exc
@@ -161,7 +159,7 @@ async def chat(request: ChatRequest):
             turn_id = None
             try:
                 # Rule-based grading remains automatic.
-                challenge_result = await evaluate_response(base_url, headers, reply, challenge, judge_config, user_message or "")
+                challenge_result = await evaluate_response(base_url, headers, reply, challenge, judge_config)
             except (httpx.HTTPError, KeyError, IndexError, TypeError, ValueError) as exc:
                 print(f"challenge_evaluator_error: {type(exc).__name__}", flush=True)
                 challenge_result = {"type": judge_config.get("type"), "error": "評分器目前無法完成評分。", "objectives": []}
