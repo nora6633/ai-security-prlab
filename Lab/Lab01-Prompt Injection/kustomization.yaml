@@ -1,0 +1,32 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: lab
+resources:
+  - 00-namespace.yaml
+  - 10-postgres.yaml
+  - 20-elasticsearch.yaml
+  - 30-kibana.yaml
+  - 40-filebeat.yaml
+  - 50-chatbot.yaml
+  - 60-alert-rules.yaml
+configMapGenerator:
+  - name: chatbot-challenge
+    files:
+      - challenge.json
+    options:
+      disableNameSuffixHash: true
+  - name: chatbot-guardrail
+    files:
+      - guardrail.json
+    options:
+      disableNameSuffixHash: true
+  - name: chatbot-guardrail-disabled
+    files:
+      - guardrail-unguarded.json
+    options:
+      disableNameSuffixHash: true
+  - name: elastic-detection-rules
+    files:
+      - alerts/rules_export.ndjson
+    options:
+      disableNameSuffixHash: true
