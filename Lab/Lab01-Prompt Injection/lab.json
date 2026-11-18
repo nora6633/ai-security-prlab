@@ -1,0 +1,9 @@
+{
+  "id": "Lab01",
+  "controller_profile": "elastic_chatbot",
+  "namespace": "lab",
+  "chat": {
+    "guarded_port": 8000,
+    "unguarded_port": 8001
+  }
+}
