@@ -15,6 +15,7 @@ export default function ChatPage() {
   const [challenge, setChallenge] = useState(null);
   const [objectiveResults, setObjectiveResults] = useState({});
   const [challengeError, setChallengeError] = useState("");
+  const [checkFeedback, setCheckFeedback] = useState(null);
   const [chatMode, setChatMode] = useState("guarded");
   const [labId, setLabId] = useState("Lab01");
   const [policy, setPolicy] = useState(null);
@@ -56,7 +57,7 @@ export default function ChatPage() {
       .then(setChallenge)
       .catch(() => setChallenge(null));
   }, [labId]);
-  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, busy, error]);
+  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, busy, checking, checkFeedback, error]);
 
   async function sendMessage(text = draft) {
     const content = text.trim();
@@ -67,6 +68,7 @@ export default function ChatPage() {
     setDraft("");
     setBusy(true);
     setError("");
+    setCheckFeedback(null);
 
     try {
       const response = await fetch(`/api/chat?lab=${encodeURIComponent(labId)}&mode=${chatMode}`, {
@@ -99,17 +101,20 @@ export default function ChatPage() {
     if (!turnIds.length || checking || busy) return;
     setChecking(true);
     setChallengeError("");
+    setCheckFeedback(null);
     try {
       const response = await fetch(`/api/evaluate?lab=${encodeURIComponent(labId)}&mode=${chatMode}`, {
         method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ turn_ids: turnIds }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.detail || "AI Check 失敗。");
+      if (!Array.isArray(data.objectives) || data.objectives.length === 0 || data.objectives.some((item) => typeof item.passed !== "boolean")) throw new Error("AI Check 沒有回傳有效的判定結果。");
+      setCheckFeedback({ ok: data.objectives.every((item) => item.passed), text: data.objectives.every((item) => item.passed) ? "AI Check：已通過。" : "AI Check：未通過。AI Judge 判定目前回答尚未符合完整取得的條件。" });
       setObjectiveResults((current) => Object.fromEntries([
         ...Object.entries(current),
         ...data.objectives.map((objective) => [objective.id, { passed: Boolean(current[objective.id]?.passed || objective.passed) }]),
       ]));
-    } catch (error) { setChallengeError(error.message || "AI Check 失敗。"); }
+    } catch (error) { setChallengeError(error.message || "AI Check 失敗。"); setCheckFeedback({ error: true, text: error.message || "AI Check 失敗。" }); }
     finally { setChecking(false); }
   }
 
@@ -148,6 +153,7 @@ export default function ChatPage() {
     setObjectiveResults({});
     setError("");
     setChallengeError("");
+    setCheckFeedback(null);
   }
 
   const stateText = status.loading
@@ -177,7 +183,7 @@ export default function ChatPage() {
             <h1>測試聊天室</h1>
             <p>直接輸入訊息，測試 Lab chatbot。</p>
           </div>
-          <button className={styles.clearButton} type="button" onClick={() => { setMessages([]); setTurnIds([]); setObjectiveResults({}); setChallengeError(""); setError(""); }} disabled={busy || checking || !messages.length}>
+          <button className={styles.clearButton} type="button" onClick={() => { setMessages([]); setTurnIds([]); setObjectiveResults({}); setChallengeError(""); setCheckFeedback(null); setError(""); }} disabled={busy || checking || !messages.length}>
             新對話
           </button>
         </header>
@@ -235,6 +241,10 @@ export default function ChatPage() {
           ))}
 
           {busy && <div className={styles.typing}><span /><span /><span /> chatbot 正在回覆</div>}
+          <div aria-live="polite" role="status">
+            {checking && <div className={styles.checkFeedback}>AI Judge 正在檢查本次對話的回答…</div>}
+            {!checking && checkFeedback && <div className={`${styles.checkFeedback} ${checkFeedback.error ? styles.checkFeedbackError : checkFeedback.ok ? styles.checkFeedbackPassed : ""}`}>{checkFeedback.text}</div>}
+          </div>
           {error && <div className={styles.errorBox}>{error}</div>}
           <div ref={bottomRef} />
         </div>
