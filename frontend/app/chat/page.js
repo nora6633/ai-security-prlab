@@ -21,12 +21,12 @@ const outputRuleDetails = {
   secret_assignment: { title: "密碼與金鑰欄位", description: "遮罩 password、api_key 等欄位指定的值。" },
 };
 
-function RuleList({ rules, details, onChange }) {
+function RuleList({ rules, details, patterns = {}, onChange }) {
   return <div className={styles.ruleList}>{Object.entries(rules).map(([name, enabled]) => {
     const rule = details[name] || { title: name, description: "此關卡設定的規則。" };
     return <label className={styles.ruleItem} key={name}>
       <input type="checkbox" checked={enabled} onChange={(event) => onChange(name, event.target.checked)} />
-      <span className={styles.ruleText}><strong>{rule.title}</strong><span>{rule.description}</span>{rule.example && <span>例如：<code>{rule.example}</code></span>}</span>
+      <span className={styles.ruleText}><strong>{rule.title}</strong><span>{rule.description}</span>{rule.example && <span>例如：<code>{rule.example}</code></span>}<span>比對規則（正規表示式）：</span><code className={styles.rulePattern}>{patterns[name] || "此規則沒有可顯示的比對式"}</code></span>
     </label>;
   })}</div>;
 }
@@ -263,11 +263,11 @@ export default function ChatPage() {
               <label className={styles.policyField}>{policy.input.action === "instruct" ? "追加指示" : "固定回覆"}
                 <textarea rows={3} value={policy.input[policy.input.action === "instruct" ? "instruction" : "response"] || ""} onChange={(event) => updatePolicy("input", policy.input.action === "instruct" ? "instruction" : "response", event.target.value)} />
               </label>
-              <RuleList rules={policy.input.rules} details={inputRuleDetails} onChange={(name, enabled) => updatePolicy("input", "rules", { ...policy.input.rules, [name]: enabled })} />
+              <RuleList rules={policy.input.rules} details={inputRuleDetails} patterns={policy.patterns?.input} onChange={(name, enabled) => updatePolicy("input", "rules", { ...policy.input.rules, [name]: enabled })} />
             </fieldset>
             <fieldset><legend>輸出護欄</legend>
               <label><input type="checkbox" checked={policy.output.enabled} onChange={(event) => updatePolicy("output", "enabled", event.target.checked)} /> 啟用輸出遮罩</label>
-              <RuleList rules={policy.output.rules} details={outputRuleDetails} onChange={(name, enabled) => updatePolicy("output", "rules", { ...policy.output.rules, [name]: enabled })} />
+              <RuleList rules={policy.output.rules} details={outputRuleDetails} patterns={policy.patterns?.output} onChange={(name, enabled) => updatePolicy("output", "rules", { ...policy.output.rules, [name]: enabled })} />
             </fieldset>
             <button className={styles.policySave} type="submit" disabled={policyBusy}>{policyBusy ? "儲存中…" : "儲存護欄設定"}</button>
           </form> : <p>正在讀取護欄設定…</p>}

@@ -22,6 +22,10 @@ from cryptography.x509.oid import ExtendedKeyUsageOID, NameOID
 
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "chatbot"))
+from input_guardrail import _RULES as INPUT_RULES
+from output_guardrail import _OUTPUT_RULES as OUTPUT_RULES
+
 LAB_ROOT = ROOT / "Lab"
 LAB_CONTEXT = threading.local()
 
@@ -514,7 +518,13 @@ class Handler(BaseHTTPRequestHandler):
                     return
                 with POLICY_LOCK:
                     policy = json.loads((lab["directory"] / "guardrail.json").read_text(encoding="utf-8"))["guardrail"]
-                self._send(200, {"input": policy["input"], "output": policy["output"]})
+                self._send(200, {
+                    "input": policy["input"], "output": policy["output"],
+                    "patterns": {
+                        "input": {name: INPUT_RULES[name].pattern for name in policy["input"].get("rules", {}) if name in INPUT_RULES},
+                        "output": {name: OUTPUT_RULES[name].pattern for name in policy["output"].get("rules", {}) if name in OUTPUT_RULES},
+                    },
+                })
             except (OSError, ValueError, KeyError) as exc:
                 self._send(503, {"error": f"無法讀取護欄設定：{exc}"})
             return
