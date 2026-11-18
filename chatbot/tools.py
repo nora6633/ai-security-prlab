@@ -10,45 +10,6 @@ from typing import Any
 MAX_FILE_CHARS = 8000
 MAX_SEARCH_RESULTS = 50
 
-TOOL_DEFINITIONS = [
-    {
-        "type": "function",
-        "function": {
-            "name": "file_search",
-            "description": "Searches for files matching a pattern.",
-            "parameters": {
-                "type": "object",
-                "properties": {"pattern": {"type": "string", "description": "Glob pattern or part of a file name, e.g. *.md"}},
-                "required": ["pattern"],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "file_read",
-            "description": "Reads the contents of a file.",
-            "parameters": {
-                "type": "object",
-                "properties": {"path": {"type": "string", "description": "File path returned by file_search"}},
-                "required": ["path"],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "config_lookup",
-            "description": "Looks up configuration values from JSON.",
-            "parameters": {
-                "type": "object",
-                "properties": {"key": {"type": "string", "description": "Dot-separated key, e.g. app.name"}},
-                "required": ["key"],
-            },
-        },
-    },
-]
-
 
 def _root() -> Path:
     return Path(os.getenv("INTERNAL_DATA_DIR", "/srv/internal"))
@@ -61,6 +22,67 @@ def _files(root: Path) -> list[str]:
         for path in root.rglob("*")
         if path.is_file() and not any(part.startswith(".") for part in path.relative_to(root).parts)
     )
+
+
+def _config_path() -> Path:
+    return _root() / os.getenv("INTERNAL_CONFIG_FILE", "app-config.json")
+
+
+def tool_definitions() -> list[dict[str, Any]]:
+    """Describe the tools, listing what is currently in the data directory."""
+    try:
+        files = _files(_root())
+    except OSError:
+        files = []
+    try:
+        config = json.loads(_config_path().read_text(encoding="utf-8"))
+        sections = sorted(config) if isinstance(config, dict) else []
+    except (OSError, ValueError):
+        sections = []
+    path_help = "File path returned by file_search."
+    if files:
+        path_help += " Available files: " + ", ".join(files)
+    key_help = "Dot-separated key such as section.field."
+    if sections:
+        key_help += " Top-level sections: " + ", ".join(sections)
+    return [
+        {
+            "type": "function",
+            "function": {
+                "name": "file_search",
+                "description": "Searches for files matching a pattern.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {"pattern": {"type": "string", "description": "Glob pattern or part of a file name, e.g. *.md; use * to list all files."}},
+                    "required": ["pattern"],
+                },
+            },
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "file_read",
+                "description": "Reads the contents of a file.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {"path": {"type": "string", "description": path_help}},
+                    "required": ["path"],
+                },
+            },
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "config_lookup",
+                "description": "Looks up configuration values from JSON.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {"key": {"type": "string", "description": key_help}},
+                    "required": ["key"],
+                },
+            },
+        },
+    ]
 
 
 def _render(value: Any, references: dict[str, str]) -> Any:
@@ -92,8 +114,7 @@ def file_read(path: str, references: dict[str, str]) -> dict[str, Any]:
 
 
 def config_lookup(key: str, references: dict[str, str]) -> dict[str, Any]:
-    config_file = _root() / os.getenv("INTERNAL_CONFIG_FILE", "app-config.json")
-    value: Any = _render(json.loads(config_file.read_text(encoding="utf-8")), references)
+    value: Any = _render(json.loads(_config_path().read_text(encoding="utf-8")), references)
     for part in [part for part in key.strip().split(".") if part]:
         if not isinstance(value, dict) or part not in value:
             return {"error": f"Config key not found: {key}", "available_keys": sorted(value) if isinstance(value, dict) else []}

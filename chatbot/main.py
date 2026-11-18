@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field
 from evaluator import evaluate_response
 from input_guardrail import inspect_content
 from output_guardrail import inspect_output
-from tools import TOOL_DEFINITIONS, run_tool
+from tools import run_tool, tool_definitions
 from guardrail import (
     GuardrailDecision,
     append_system_text,
@@ -74,11 +74,12 @@ def log_chat_turn(user_message: str, assistant_message: str):
 async def run_model(client: httpx.AsyncClient, base_url: str, headers: dict[str, str], model: str,
                     messages: list[dict], references: dict[str, str]) -> tuple[str, str]:
     """Call the model, running requested tools until it gives a final answer."""
+    tools = tool_definitions()
     for round_number in range(MAX_TOOL_ROUNDS + 1):
         payload = {"model": model, "messages": messages, "stream": False}
         # The last round omits tools so the model has to answer with what it has.
         if round_number < MAX_TOOL_ROUNDS:
-            payload["tools"] = TOOL_DEFINITIONS
+            payload["tools"] = tools
         response = await client.post(f"{base_url}/api/chat/completions", headers=headers, json=payload)
         response.raise_for_status()
         data = response.json()
