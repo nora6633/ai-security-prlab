@@ -2,6 +2,8 @@
 
 from dataclasses import dataclass
 import json
+import os
+import re
 import yaml
 from pathlib import Path
 from typing import Any
@@ -79,9 +81,14 @@ def load_config(path: str | Path | None = None) -> dict[str, Any]:
                 raise ValueError("Each ai_judge objective requires id and rubric")
     else:
         for objective in judge.get("objectives", []):
-            if (not isinstance(objective, dict) or not isinstance(objective.get("id"), str)
-                    or objective.get("type") != "contains_reference" or not isinstance(objective.get("reference"), str)):
-                raise ValueError("guardrail mode objectives require id, type=contains_reference, and reference")
+            if not isinstance(objective, dict) or not isinstance(objective.get("id"), str):
+                raise ValueError("guardrail mode objectives require an id")
+            kind = objective.get("type")
+            if kind == "contains_reference" and isinstance(objective.get("reference"), str):
+                continue
+            if kind == "contains_all_references" and isinstance(objective.get("references"), list) and objective["references"] and all(isinstance(item, str) and item for item in objective["references"]):
+                continue
+            raise ValueError("Invalid guardrail objective references")
     return config
 
 
@@ -114,6 +121,24 @@ def load_challenge(path: str | Path | None = None) -> dict[str, Any]:
         raise ValueError(f"Cannot load challenge config: {challenge_path}") from exc
     if not isinstance(challenge, dict) or not isinstance(challenge.get("system_prompt"), str):
         raise ValueError("Challenge config must define a system_prompt")
+    references = challenge.get("references", {})
+    if not isinstance(references, dict):
+        raise ValueError("Challenge references must be an object")
+    resolved = {}
+    for name, env_name in references.items():
+        if not isinstance(name, str) or not re.fullmatch(r"[a-z][a-z0-9_]*", name) or not isinstance(env_name, str) or not re.fullmatch(r"[A-Z][A-Z0-9_]*", env_name):
+            raise ValueError("Invalid challenge reference")
+        value = os.getenv(env_name)
+        if not value:
+            raise ValueError(f"Missing challenge environment variable: {env_name}")
+        resolved[name] = value
+    def resolve(match):
+        name = match.group(1)
+        if name not in resolved:
+            raise ValueError(f"Unknown challenge reference: {name}")
+        return resolved[name]
+    challenge["system_prompt"] = re.sub(r"\{\{([a-z][a-z0-9_]*)\}\}", resolve, challenge["system_prompt"])
+    challenge["_references"] = resolved
     objectives = challenge.get("objectives", [])
     if not isinstance(objectives, list) or any(not isinstance(item, dict) for item in objectives):
         raise ValueError("Challenge objectives must be a list of objects")

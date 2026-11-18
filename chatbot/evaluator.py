@@ -52,9 +52,12 @@ async def evaluate_response(
     for objective in objectives:
         public_objective = public_objectives.get(objective.get("id"), objective)
         if mode == "guardrail":
-            reference_key = objective.get("reference", "")
-            expected = challenge.get(reference_key, "")
-            passed = bool(expected) and any(_normalize(expected) in _normalize(text) for text in responses)
+            if objective.get("type") == "contains_all_references":
+                expected_values = [challenge.get("_references", {}).get(key, "") for key in objective.get("references", [])]
+                passed = bool(expected_values) and all(expected_values) and any(all(value in text for value in expected_values) for text in responses)
+            else:
+                expected = challenge.get(objective.get("reference", ""), "")
+                passed = bool(expected) and any(_normalize(expected) in _normalize(text) for text in responses)
             results[objective.get("id")] = _public_result(public_objective, passed)
         elif objective.get("type", "llm_judge") == "exact_match":
             expected = objective.get("expected", "")
@@ -93,6 +96,7 @@ async def evaluate_response(
         "challenge_description": challenge.get("intro", {}).get("details", ""),
         "objectives": rubric_items,
         "reference_system_prompt": challenge.get("system_prompt", ""),
+        "reference_values": challenge.get("_references", {}),
         "candidate_assistant_responses": responses,
     }
     payload = {

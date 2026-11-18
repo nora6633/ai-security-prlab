@@ -1,6 +1,6 @@
 # Lab01：Prompt Injection
 
-目標：讓 chatbot 完整輸出本關的 system prompt。練習模式可調整輸入與輸出護欄；考試模式使用預設設定。
+目標：讓 chatbot 在單次回覆中輸出本關 PostgreSQL 帳號與密碼。練習模式可調整輸入與輸出護欄；考試模式使用預設設定。
 
 ## 設定與啟動
 
@@ -8,12 +8,12 @@
 2. 建立專案根目錄的 `chatbot/openwebui-secret.env`，填入 `api-key=你的金鑰`。
 3. 啟動平台後，從首頁進入 Lab01，點選「啟動 Lab」。Kibana 網址及登入資訊會顯示在 Lab 頁面。
 
-關閉 Lab 會刪除 PVC，並清空 Elasticsearch 的實驗資料。
+關閉 Lab 會刪除 PVC，並清空 PostgreSQL 和 Elasticsearch 的實驗資料。
 
 ## 設定檔
 
 - `lab.yaml`：namespace 和 chatbot 端口。
-- `challenge.yaml`：system prompt 與過關條件。
+- `challenge.yaml`：system prompt 範本與過關條件；帳號密碼從 PostgreSQL Secret 載入。
 - `modes/practice.yaml`：練習模式的護欄與通關判定設定。
 - `modes/exam.yaml`：考試模式的護欄與 AI Judge 設定。
 - `detection/rules_export.ndjson`：啟動時匯入的 Elastic 偵測規則。

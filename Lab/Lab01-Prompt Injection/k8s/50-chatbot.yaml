@@ -32,6 +32,8 @@ spec:
           envFrom:
             - configMapRef:
                 name: chatbot-config
+            - secretRef:
+                name: postgres-auth
           env:
             - name: GUARDRAIL_CONFIG
               value: /etc/lab-guardrail/mode.yaml
@@ -108,6 +110,8 @@ spec:
           envFrom:
             - configMapRef:
                 name: chatbot-config
+            - secretRef:
+                name: postgres-auth
           env:
             - name: GUARDRAIL_CONFIG
               value: /etc/lab-guardrail/mode.yaml
