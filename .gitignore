@@ -1,0 +1,5 @@
+chatbot/openwebui-secret.env
+frontend/node_modules/
+frontend/.next/
+__pycache__/
+*.py[cod]
