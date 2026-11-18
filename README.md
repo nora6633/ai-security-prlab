@@ -12,6 +12,8 @@ flowchart LR
     UI -->|聊天| B[Lab Chatbot]
     B -->|模型請求| O[Open WebUI / LLM]
     O -->|回答| B
+    B -->|輸出檢查| M[GLiNER / Presidio 遮罩服務]
+    M -->|遮罩後內容| B
     B -->|回答與過關結果| UI
     B -->|對話日誌| F[Filebeat]
     F --> E[(Elasticsearch)]
@@ -21,6 +23,7 @@ flowchart LR
 - `frontend/`：Lab 目錄、操作介面與聊天室。
 - `portal/`：讀取 Lab 設定，管理 Kubernetes 資源與狀態。
 - `chatbot/`：聊天、輸入／輸出護欄與通關判定。
+- `output-masker/`：GLiNER 偵測與 Presidio 輸出遮罩。
 - `Lab/`：各關的情境、規則與 Kubernetes 資源。
 
 目前控制器支援 `elastic_chatbot` profile；新增不同服務組合需擴充控制器。

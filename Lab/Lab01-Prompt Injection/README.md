@@ -20,4 +20,4 @@
 - `k8s/`：Kibana、Elasticsearch 等服務各自的 Kubernetes 資源。
 - `kustomization.yaml`：組合本關資源與設定。
 
-練習模式的輸出遮罩使用 Gitleaks 偵測並遮罩符合規則的憑證；可在聊天室開啟或關閉。
+練習模式的輸出遮罩使用 GLiNER 偵測敏感資料、Presidio 執行遮罩；可在聊天室開啟或關閉。模型辨識可能漏判或誤判。

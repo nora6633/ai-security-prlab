@@ -355,7 +355,9 @@ def run_start(job_id, lab):
         ("檢查 Docker", ["docker", "info"], 90),
         ("確認 kind 叢集", None, 30),
         ("建置 FastAPI chatbot 映像", ["docker", "build", "-t", "lab-chatbot:dev", str(ROOT / "chatbot")], 240),
+        ("建置輸出遮罩服務映像", ["docker", "build", "-t", "lab-output-masker:dev", str(ROOT / "output-masker")], 1200),
         ("載入映像至 kind", ["kind", "load", "docker-image", "lab-chatbot:dev", "--name", CLUSTER], 180),
+        ("載入輸出遮罩服務至 kind", ["kind", "load", "docker-image", "lab-output-masker:dev", "--name", CLUSTER], 600),
         ("建立 lab namespace", ["kubectl", "apply", "-f", str(current_lab()["directory"] / "k8s" / "00-namespace.yaml")], 45),
         ("清除舊的規則匯入 Job", ["kubectl", "-n", current_lab()["namespace"], "delete", "job", "import-elastic-detection-rules", "--ignore-not-found=true"], 30),
     ]
