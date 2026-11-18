@@ -29,6 +29,8 @@ export default function ChatPage() {
   const [messages, setMessages] = useState([]);
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
+  const [checking, setChecking] = useState(false);
+  const [turnId, setTurnId] = useState(null);
   const [status, setStatus] = useState({ loading: true, running: false });
   const [error, setError] = useState("");
   const [challenge, setChallenge] = useState(null);
@@ -95,6 +97,7 @@ export default function ChatPage() {
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.detail || "聊天請求失敗。");
+      setTurnId(data.turn_id || null);
       if (data.challenge?.objectives) {
         setObjectiveResults((current) => Object.fromEntries([
           ...Object.entries(current),
@@ -111,6 +114,24 @@ export default function ChatPage() {
       setBusy(false);
       inputRef.current?.focus();
     }
+  }
+
+  async function checkAnswer() {
+    if (!turnId || checking || busy) return;
+    setChecking(true);
+    setChallengeError("");
+    try {
+      const response = await fetch(`/api/evaluate?lab=${encodeURIComponent(labId)}&mode=${chatMode}`, {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ turn_id: turnId }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || "AI Check 失敗。");
+      setObjectiveResults((current) => Object.fromEntries([
+        ...Object.entries(current),
+        ...data.objectives.map((objective) => [objective.id, { passed: Boolean(current[objective.id]?.passed || objective.passed) }]),
+      ]));
+    } catch (error) { setChallengeError(error.message || "AI Check 失敗。"); }
+    finally { setChecking(false); }
   }
 
   function updatePolicy(section, field, value) {
@@ -144,6 +165,7 @@ export default function ChatPage() {
     if (mode === chatMode) return;
     setChatMode(mode);
     setMessages([]);
+    setTurnId(null);
     setObjectiveResults({});
     setError("");
     setChallengeError("");
@@ -176,15 +198,15 @@ export default function ChatPage() {
             <h1>測試聊天室</h1>
             <p>直接輸入訊息，測試 Lab chatbot。</p>
           </div>
-          <button className={styles.clearButton} type="button" onClick={() => { setMessages([]); setError(""); }} disabled={busy || !messages.length}>
+          <button className={styles.clearButton} type="button" onClick={() => { setMessages([]); setTurnId(null); setError(""); }} disabled={busy || checking || !messages.length}>
             新對話
           </button>
         </header>
 
         <div className={styles.modeSwitch} role="group" aria-label="選擇 chatbot 服務">
           <span>選擇模式</span>
-          <button type="button" disabled={busy} className={chatMode === "guarded" ? styles.modeSelected : ""} onClick={() => switchMode("guarded")} aria-pressed={chatMode === "guarded"}>練習模式</button>
-          <button type="button" disabled={busy} className={chatMode === "unguarded" ? styles.modeSelected : ""} onClick={() => switchMode("unguarded")} aria-pressed={chatMode === "unguarded"}>考試模式</button>
+          <button type="button" disabled={busy || checking} className={chatMode === "guarded" ? styles.modeSelected : ""} onClick={() => switchMode("guarded")} aria-pressed={chatMode === "guarded"}>練習模式</button>
+          <button type="button" disabled={busy || checking} className={chatMode === "unguarded" ? styles.modeSelected : ""} onClick={() => switchMode("unguarded")} aria-pressed={chatMode === "unguarded"}>考試模式</button>
         </div>
 
 
@@ -202,6 +224,7 @@ export default function ChatPage() {
               </div>;
             })}
           </div>
+          {chatMode === "unguarded" && <button type="button" className={styles.checkButton} onClick={checkAnswer} disabled={!turnId || busy || checking || !status.running}>{checking ? "正在檢查…" : "AI Check"}</button>}
           {challengeError && <div className={styles.challengeError}>{challengeError}</div>}
         </section>}
 
@@ -245,10 +268,10 @@ export default function ChatPage() {
             onKeyDown={handleKeyDown}
             placeholder={status.running ? "輸入訊息…（Enter 傳送，Shift + Enter 換行）" : "先到實驗控制台啟動 Lab"}
             rows={2}
-            disabled={!status.running || busy}
+            disabled={!status.running || busy || checking}
             aria-label="輸入聊天訊息"
           />
-          <button type="submit" disabled={!draft.trim() || busy || !status.running} aria-label="傳送訊息">↑</button>
+          <button type="submit" disabled={!draft.trim() || busy || checking || !status.running} aria-label="傳送訊息">↑</button>
         </form>
         <div className={styles.chatFoot}><span>重新整理頁面會清除本次對話。</span><span>{messages.length ? `${messages.length} 則訊息` : `${labId} 測試`}</span></div>
       </section>
