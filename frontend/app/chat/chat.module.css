@@ -63,6 +63,12 @@
 .policyPanel fieldset { display: flex; flex-wrap: wrap; gap: 10px 18px; border: 1px solid #d7e4db; border-radius: 8px; padding: 12px; }
 .policyPanel legend { font-weight: 700; padding: 0 4px; }
 .policyPanel label { display: flex; align-items: center; gap: 6px; }
+.ruleList { display: grid; gap: 8px; flex-basis: 100%; min-width: 0; }
+.policyPanel .ruleItem { align-items: flex-start; gap: 10px; padding: 10px; border: 1px solid #e0ebe7; border-radius: 8px; background: #f8fbfa; }
+.ruleItem input { flex: 0 0 auto; margin-top: 4px; }
+.ruleText { display: grid; min-width: 0; gap: 4px; overflow-wrap: anywhere; line-height: 1.5; }
+.ruleText > span { color: #536960; }
+.ruleText code { color: #175c68; overflow-wrap: anywhere; }
 .policyPanel .policyField { flex-basis: 100%; display: grid; gap: 6px; }
 .policyField select, .policyField textarea { width: 100%; border: 1px solid #c8d9cd; border-radius: 6px; padding: 8px; font: inherit; }
 .policySave { justify-self: start; padding: 8px 16px; border: 0; border-radius: 6px; background: #245c43; color: white; cursor: pointer; }

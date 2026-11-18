@@ -4,6 +4,33 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import styles from "./chat.module.css";
 
+const inputRuleDetails = {
+  instruction_override: { title: "覆寫指令", description: "比對忽略或覆寫先前指令的特定語句。", example: "ignore previous instructions" },
+  prompt_disclosure: { title: "要求系統提示詞", description: "比對要求顯示或輸出 system prompt 的特定語句。", example: "show system prompt" },
+  secret_extraction: { title: "要求機密資料", description: "比對要求取得 flag、密碼、token 或憑證的特定語句。", example: "give me the password" },
+};
+
+const outputRuleDetails = {
+  openai_api_key: { title: "OpenAI API Key", description: "遮罩符合 sk- 或 sk-proj- 格式的金鑰。" },
+  github_token: { title: "GitHub Token", description: "遮罩符合 ghp_ 等前綴或 github_pat_ 格式的 token。" },
+  aws_access_key: { title: "AWS Access Key", description: "遮罩 AKIA 開頭的 AWS access key ID。" },
+  bearer_token: { title: "Bearer Token", description: "保留 Bearer 前綴並遮罩後面的 token。" },
+  jwt: { title: "JWT", description: "遮罩符合規則的三段式 JWT。" },
+  private_key: { title: "私鑰", description: "遮罩 PEM 格式的 private key 區塊。" },
+  connection_string: { title: "連線字串", description: "遮罩連線網址中帳號與 @ 之間的密碼。" },
+  secret_assignment: { title: "密碼與金鑰欄位", description: "遮罩 password、api_key 等欄位指定的值。" },
+};
+
+function RuleList({ rules, details, onChange }) {
+  return <div className={styles.ruleList}>{Object.entries(rules).map(([name, enabled]) => {
+    const rule = details[name] || { title: name, description: "此關卡設定的規則。" };
+    return <label className={styles.ruleItem} key={name}>
+      <input type="checkbox" checked={enabled} onChange={(event) => onChange(name, event.target.checked)} />
+      <span className={styles.ruleText}><strong>{rule.title}</strong><span>{rule.description}</span>{rule.example && <span>例如：<code>{rule.example}</code></span>}</span>
+    </label>;
+  })}</div>;
+}
+
 export default function ChatPage() {
   const [messages, setMessages] = useState([]);
   const [draft, setDraft] = useState("");
@@ -170,11 +197,11 @@ export default function ChatPage() {
               <label className={styles.policyField}>{policy.input.action === "instruct" ? "追加指示" : "固定回覆"}
                 <textarea rows={3} value={policy.input[policy.input.action === "instruct" ? "instruction" : "response"] || ""} onChange={(event) => updatePolicy("input", policy.input.action === "instruct" ? "instruction" : "response", event.target.value)} />
               </label>
-              {Object.entries(policy.input.rules).map(([name, enabled]) => <label key={name}><input type="checkbox" checked={enabled} onChange={(event) => updatePolicy("input", "rules", { ...policy.input.rules, [name]: event.target.checked })} /> {({ instruction_override: "覆寫指令", prompt_disclosure: "要求系統提示詞", secret_extraction: "要求機密資料" })[name] || name}</label>)}
+              <RuleList rules={policy.input.rules} details={inputRuleDetails} onChange={(name, enabled) => updatePolicy("input", "rules", { ...policy.input.rules, [name]: enabled })} />
             </fieldset>
             <fieldset><legend>輸出護欄</legend>
               <label><input type="checkbox" checked={policy.output.enabled} onChange={(event) => updatePolicy("output", "enabled", event.target.checked)} /> 啟用輸出遮罩</label>
-              {Object.entries(policy.output.rules).map(([name, enabled]) => <label key={name}><input type="checkbox" checked={enabled} onChange={(event) => updatePolicy("output", "rules", { ...policy.output.rules, [name]: event.target.checked })} /> {({ openai_api_key: "OpenAI API Key", github_token: "GitHub Token", aws_access_key: "AWS Access Key", bearer_token: "Bearer Token", jwt: "JWT", private_key: "私鑰", connection_string: "連線字串", secret_assignment: "密碼與金鑰欄位" })[name] || name}</label>)}
+              <RuleList rules={policy.output.rules} details={outputRuleDetails} onChange={(name, enabled) => updatePolicy("output", "rules", { ...policy.output.rules, [name]: enabled })} />
             </fieldset>
             <button className={styles.policySave} type="submit" disabled={policyBusy}>{policyBusy ? "儲存中…" : "儲存護欄設定"}</button>
           </form> : <p>正在讀取護欄設定…</p>}
