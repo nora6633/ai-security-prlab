@@ -265,8 +265,8 @@ export default function ChatPage() {
             <h3>{rule.name}</h3>
             <p>{rule.description}</p>
             <p>資料來源：{rule.index?.join(", ") || "未指定"}</p>
-            <strong>KQL 查詢</strong>
-            <pre className={styles.rulePattern}>{rule.query}</pre>
+            <strong>查詢關鍵字</strong>
+            {rule.keywords?.length ? <ul className={styles.keywordList}>{rule.keywords.map((keyword) => <li key={keyword}>{keyword}</li>)}</ul> : <p>此規則沒有可顯示的引號關鍵字。</p>}
           </article>) : <p>本關尚未設定顯示的偵測規則。</p>) : <p>正在讀取規則…</p>}
         </section>
         <details className={styles.policyPanel}>

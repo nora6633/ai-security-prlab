@@ -17,7 +17,9 @@ export async function GET(_request, { params }) {
     const rules = ids.map((id) => {
       const rule = rows.find((item) => item.rule_id === id);
       if (!rule || rule.language !== "kuery" || typeof rule.query !== "string") throw new Error(`找不到 KQL 規則：${id}`);
-      return { id, name: rule.name, description: rule.description, query: rule.query, index: rule.index };
+      const phrases = [...rule.query.matchAll(/\b[\w.]+\s*:\s*"((?:\\.|[^"\\])*)"/g)]
+        .map((match) => match[1].replace(/\\(["\\])/g, "$1"));
+      return { id, name: rule.name, description: rule.description, keywords: [...new Set(phrases)], index: rule.index };
     });
     return Response.json({ rules }, { headers: { "Cache-Control": "no-store" } });
   } catch {
