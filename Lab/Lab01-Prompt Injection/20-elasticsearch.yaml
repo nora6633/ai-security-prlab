@@ -1,0 +1,70 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: elasticsearch
+  namespace: lab
+spec:
+  serviceName: elasticsearch
+  replicas: 1
+  selector:
+    matchLabels: {app: elasticsearch}
+  template:
+    metadata:
+      labels: {app: elasticsearch}
+    spec:
+      securityContext:
+        fsGroup: 1000
+      containers:
+        - name: elasticsearch
+          image: docker.elastic.co/elasticsearch/elasticsearch:8.15.3
+          ports:
+            - {name: http, containerPort: 9200}
+            - {name: transport, containerPort: 9300}
+          env:
+            - {name: discovery.type, value: single-node}
+            - {name: xpack.security.enabled, value: "true"}
+            - {name: xpack.security.http.ssl.enabled, value: "true"}
+            - {name: xpack.security.http.ssl.key, value: certs/tls.key}
+            - {name: xpack.security.http.ssl.certificate, value: certs/tls.crt}
+            - {name: xpack.security.http.ssl.certificate_authorities, value: certs/ca.crt}
+            - {name: xpack.security.transport.ssl.enabled, value: "true"}
+            - {name: xpack.security.transport.ssl.verification_mode, value: certificate}
+            - {name: xpack.security.transport.ssl.key, value: certs/tls.key}
+            - {name: xpack.security.transport.ssl.certificate, value: certs/tls.crt}
+            - {name: xpack.security.transport.ssl.certificate_authorities, value: certs/ca.crt}
+            - {name: node.store.allow_mmap, value: "false"}
+            - {name: ES_JAVA_OPTS, value: "-Xms512m -Xmx512m"}
+            - name: ELASTIC_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: elastic-credentials
+                  key: password
+          resources:
+            requests: {cpu: 500m, memory: 1Gi}
+            limits: {cpu: "2", memory: 2Gi}
+          volumeMounts:
+            - {name: data, mountPath: /usr/share/elasticsearch/data}
+            - {name: certificates, mountPath: /usr/share/elasticsearch/config/certs, readOnly: true}
+      volumes:
+        - name: certificates
+          secret:
+            secretName: elastic-certificates
+            defaultMode: 0440
+  volumeClaimTemplates:
+    - metadata: {name: data}
+      spec:
+        accessModes: [ReadWriteOnce]
+        resources:
+          requests: {storage: 5Gi}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: elasticsearch
+  namespace: lab
+  annotations:
+    portal.lab/port-forwards: "9200:9200"
+spec:
+  selector: {app: elasticsearch}
+  ports:
+    - {name: http, port: 9200, targetPort: http}
