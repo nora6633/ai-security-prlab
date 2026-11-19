@@ -1,8 +1,5 @@
 import json
 import os
-import time
-import uuid
-from threading import Lock
 from typing import Literal
 
 import httpx
@@ -25,9 +22,6 @@ from guardrail import (
 
 
 app = FastAPI(title="Lab Chatbot API", version="0.1.0")
-turns = {}
-turns_lock = Lock()
-TURN_TTL_SECONDS = 3600
 MAX_TOOL_ROUNDS = 5
 
 
@@ -38,30 +32,6 @@ class ChatMessage(BaseModel):
 
 class ChatRequest(BaseModel):
     messages: list[ChatMessage] = Field(min_length=1)
-
-
-class EvaluateRequest(BaseModel):
-    turn_ids: list[str] = Field(min_length=1, max_length=1000)
-
-
-@app.post("/evaluate")
-async def evaluate(request: EvaluateRequest):
-    now = time.monotonic()
-    with turns_lock:
-        saved_turns = [turns.get(turn_id) for turn_id in request.turn_ids]
-    if any(not turn or now - turn[0] > TURN_TTL_SECONDS for turn in saved_turns):
-        raise HTTPException(status_code=404, detail="部分聊天紀錄已過期，請重新開始對話後再檢查。")
-    try:
-        config = load_config(os.getenv("GUARDRAIL_CONFIG"))
-        challenge = load_challenge(os.getenv("CHALLENGE_CONFIG"))
-        headers = {"Content-Type": "application/json"}
-        if os.getenv("OPENWEBUI_API_KEY"):
-            headers["Authorization"] = f"Bearer {os.environ['OPENWEBUI_API_KEY']}"
-        responses = [turn[2] for turn in saved_turns]
-        return await evaluate_response(os.getenv("BASEURL", "http://host.docker.internal:8080").rstrip("/"), headers, responses, challenge, judge_settings(config))
-    except (httpx.HTTPError, KeyError, IndexError, TypeError, ValueError) as exc:
-        print(f"challenge_evaluator_error: {type(exc).__name__}", flush=True)
-        raise HTTPException(status_code=502, detail="AI Check 無法完成，請確認評分器與模型服務。") from exc
 
 
 def log_chat_turn(user_message: str, assistant_message: str):
@@ -105,17 +75,11 @@ def blocked_response(reply: str, model: str, judge_config: dict, input_decision:
     return {
         "reply": reply,
         "model": model,
-        "turn_id": None,
         "guardrail": {"triggered": input_decision.triggered, "categories": list(input_decision.categories),
                       "action": "block" if input_decision.triggered else "allow"},
         "output_guardrail": {"triggered": output_decision.triggered, "categories": list(output_decision.categories),
                              "action": "block" if output_decision.triggered else "allow"},
-        "challenge": {
-            "model": judge_config.get("model") or judge_config.get("type"),
-            "type": judge_config.get("type"),
-            "skipped": True,
-            "objectives": [],
-        },
+        "challenge": {"type": judge_config.get("type"), "skipped": True, "objectives": []},
     }
 
 
@@ -181,29 +145,10 @@ async def chat(request: ChatRequest):
 
     if user_message is not None:
         log_chat_turn(user_message, reply)
-    if judge_config.get("type") in {"ai_judge", "ai_confidence"}:
-        turn_id = uuid.uuid4().hex
-        now = time.monotonic()
-        with turns_lock:
-            expired = [key for key, value in turns.items() if now - value[0] > TURN_TTL_SECONDS]
-            for key in expired:
-                turns.pop(key, None)
-            if len(turns) >= 1000:
-                turns.pop(next(iter(turns)))
-            turns[turn_id] = (now, user_message or "", reply)
-        challenge_result = {"type": judge_config.get("type"), "pending": True, "objectives": []}
-    else:
-        turn_id = None
-        try:
-            # Rule-based grading remains automatic.
-            challenge_result = await evaluate_response(base_url, headers, reply, challenge, judge_config)
-        except (httpx.HTTPError, KeyError, IndexError, TypeError, ValueError) as exc:
-            print(f"challenge_evaluator_error: {type(exc).__name__}", flush=True)
-            challenge_result = {"type": judge_config.get("type"), "error": "評分器目前無法完成評分。", "objectives": []}
+    challenge_result = evaluate_response(reply, challenge, judge_config)
     return {
         "reply": reply,
         "model": reply_model,
-        "turn_id": turn_id,
         "guardrail": {"triggered": False, "categories": [], "action": "allow"},
         "output_guardrail": {"triggered": False, "categories": [], "action": "allow"},
         "challenge": challenge_result,

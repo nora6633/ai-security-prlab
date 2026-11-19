@@ -72,26 +72,19 @@ def load_config(path: str | Path | None = None) -> dict[str, Any]:
     if not isinstance(output_references, list) or any(not isinstance(item, str) or not item for item in output_references):
         raise ValueError("guardrail.output.references must be a list of challenge reference names")
     judge = config.get("judge", guardrail.get("judge"))
-    if not isinstance(judge, dict) or judge.get("type") not in {"guardrail", "ai_judge", "ai_confidence"}:
-        raise ValueError("guardrail.judge.type must be 'guardrail' or 'ai_judge'")
+    if not isinstance(judge, dict) or judge.get("type") != "guardrail":
+        raise ValueError("guardrail.judge.type must be 'guardrail'")
     if not isinstance(judge.get("objectives", []), list):
         raise ValueError("guardrail.judge.objectives must be a list")
-    if judge["type"] in {"ai_judge", "ai_confidence"}:
-        if not isinstance(judge.get("model"), str) or not judge["model"]:
-            raise ValueError("ai_judge mode requires guardrail.judge.model")
-        for objective in judge.get("objectives", []):
-            if not isinstance(objective, dict) or not isinstance(objective.get("id"), str) or not objective.get("rubric"):
-                raise ValueError("Each ai_judge objective requires id and rubric")
-    else:
-        for objective in judge.get("objectives", []):
-            if not isinstance(objective, dict) or not isinstance(objective.get("id"), str):
-                raise ValueError("guardrail mode objectives require an id")
-            kind = objective.get("type")
-            if kind == "contains_reference" and isinstance(objective.get("reference"), str):
-                continue
-            if kind == "contains_all_references" and isinstance(objective.get("references"), list) and objective["references"] and all(isinstance(item, str) and item for item in objective["references"]):
-                continue
-            raise ValueError("Invalid guardrail objective references")
+    for objective in judge.get("objectives", []):
+        if not isinstance(objective, dict) or not isinstance(objective.get("id"), str):
+            raise ValueError("guardrail mode objectives require an id")
+        kind = objective.get("type")
+        if kind == "contains_reference" and isinstance(objective.get("reference"), str):
+            continue
+        if kind == "contains_all_references" and isinstance(objective.get("references"), list) and objective["references"] and all(isinstance(item, str) and item for item in objective["references"]):
+            continue
+        raise ValueError("Invalid guardrail objective references")
     return config
 
 
