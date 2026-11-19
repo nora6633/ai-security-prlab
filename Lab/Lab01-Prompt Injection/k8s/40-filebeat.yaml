@@ -9,18 +9,66 @@ data:
       - type: filestream
         id: lab-container-logs
         enabled: true
+        # Only the chatbots: Elasticsearch, Kibana and filebeat logs would bury the chat records.
         paths:
-          - /var/log/containers/*_lab_*.log
+          - /var/log/containers/chatbot-*_lab_*.log
         prospector.scanner.symlinks: true
         parsers:
           - container:
               stream: all
               format: auto
     processors:
+      # Keep the startup lines out; they carry no chat activity.
       - drop_event:
           when:
+            regexp:
+              message: "^(INFO|WARNING):"
+      - add_fields:
+          target: chat
+          fields: {mode: exam}
+          when:
             contains:
-              message: "plugins.securitySolution.ruleExecution"
+              log.file.path: "/chatbot-unguarded-"
+      - add_fields:
+          target: chat
+          fields: {mode: practice}
+          when:
+            not:
+              contains:
+                log.file.path: "/chatbot-unguarded-"
+      - add_fields:
+          target: chat
+          fields: {event: turn}
+          when:
+            regexp:
+              message: "^user_message: "
+      - add_fields:
+          target: chat
+          fields: {event: input_blocked}
+          when:
+            regexp:
+              message: "^guardrail_alert: "
+      - add_fields:
+          target: chat
+          fields: {event: output_blocked}
+          when:
+            regexp:
+              message: "^output_guardrail_alert: "
+      - add_fields:
+          target: chat
+          fields: {event: tool_call}
+          when:
+            regexp:
+              message: "^tool_call: "
+      # message stays intact for the detection rules; the two sides of a turn are split out for search.
+      - dissect:
+          when:
+            regexp:
+              message: "^user_message: "
+          tokenizer: "user_message: %{user_message} | assistant_response: %{assistant_response}"
+          field: message
+          target_prefix: chat
+          ignore_failure: true
     output.elasticsearch:
       hosts: ["https://elasticsearch:9200"]
       username: elastic

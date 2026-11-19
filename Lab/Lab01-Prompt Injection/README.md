@@ -28,6 +28,22 @@
 - `modes/exam.yaml`：考試模式的護欄與通關判定設定；`detection_rules` 指定輸入護欄參考的 Elastic 規則。
 - `detection/rules_export.ndjson`：啟動時匯入的 Elastic 偵測規則。
 - `k8s/`：Kibana、Elasticsearch 等服務各自的 Kubernetes 資源。
+
+## 在 Kibana 查聊天紀錄
+
+Filebeat 只收集兩個 chatbot 的 log，並加上以下欄位（`message` 保持原樣，偵測規則不受影響）：
+
+| 欄位 | 值 |
+|---|---|
+| `chat.mode` | `practice`（練習模式）、`exam`（考試模式） |
+| `chat.event` | `turn`（一則對話）、`input_blocked`、`output_blocked`、`tool_call` |
+| `chat.user_message`、`chat.assistant_response` | 一則對話的使用者訊息與回覆 |
+
+在 Discover 選「Lab 01 container and chatbot logs」，例如：
+
+- 所有對話：`chat.event: turn`
+- 考試模式被輸入護欄擋下的請求：`chat.mode: exam and chat.event: input_blocked`
+- 查使用者問過的內容：`chat.user_message: *password*`
 - `kustomization.yaml`：組合本關資源與設定。
 
 ## 預期解法

@@ -7,4 +7,5 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY main.py guardrail.py input_guardrail.py output_guardrail.py tools.py evaluator.py guardrail-default.json challenge-default.json ./
 EXPOSE 8000
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Chat turns are logged explicitly; per-request access logs (mostly health probes) would bury them.
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--no-access-log"]
