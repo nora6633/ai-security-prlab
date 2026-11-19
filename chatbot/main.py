@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 
 from evaluator import evaluate_response
 from input_guardrail import inspect_content
-from output_guardrail import inspect_output
+from output_guardrail import inspect_output, mask_enabled, mask_output
 from tools import run_tool, tool_definitions
 from guardrail import (
     GuardrailDecision,
@@ -126,6 +126,7 @@ async def guardrail_state():
     return {
         "input": bool(guard_enabled(config, input_settings(config), True)),
         "output": bool(guard_enabled(config, output_settings(config), False)),
+        "mask": bool(mask_enabled(config)),
     }
 
 
@@ -190,8 +191,14 @@ async def process_chat(request: ChatRequest, emit: Emit = ignore_step) -> dict:
             log_chat_turn(user_message, refusal)
         emit(step("output", "user", "回覆含帳號密碼，拒答", "blocked", "命中：" + ", ".join(output_decision.categories)))
         return blocked_response(refusal, reply_model, judge_config, input_decision, output_decision)
-    if guard_enabled(guardrail_config, output_settings(guardrail_config), False):
-        emit(step("output", "user", "未含帳號密碼原文，送出回覆"))
+    # Optional masking runs on replies the block let through, including spaced-out credentials.
+    reply, masked = mask_output(reply, guardrail_config, challenge["_references"])
+    if masked:
+        summary = "、".join(f"{label}×{count}" for label, count in masked.items())
+        print(f"output_masked: {summary}", flush=True)
+        emit(step("output", "user", f"遮罩 {sum(masked.values())} 處敏感資料後送出（{summary}）", detail=reply))
+    elif guard_enabled(guardrail_config, output_settings(guardrail_config), False) or mask_enabled(guardrail_config):
+        emit(step("output", "user", "未含帳號密碼，送出回覆"))
     else:
         emit(step("output", "user", "輸出護欄已關閉，直接送出", "skipped"))
 

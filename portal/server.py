@@ -642,6 +642,11 @@ class Handler(BaseHTTPRequestHandler):
                         if not isinstance(value, dict) or type(value.get("enabled")) is not bool:
                             raise ValueError(f"{section} 設定無效")
                         policy[section]["enabled"] = value["enabled"]
+                    # Advanced option outside the course path: mask credentials in replies.
+                    mask = incoming["output"].get("mask", policy["output"].get("mask", False))
+                    if type(mask) is not bool:
+                        raise ValueError("output.mask 設定無效")
+                    policy["output"]["mask"] = mask
                     policy["enabled"] = True
                     temporary = path.with_name(f".{path.name}.{uuid.uuid4().hex}.tmp")
                     try:

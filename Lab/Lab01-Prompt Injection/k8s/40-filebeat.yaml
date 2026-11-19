@@ -56,6 +56,12 @@ data:
               message: "^output_guardrail_alert: "
       - add_fields:
           target: chat
+          fields: {event: output_masked}
+          when:
+            regexp:
+              message: "^output_masked: "
+      - add_fields:
+          target: chat
           fields: {event: tool_call}
           when:
             regexp:

@@ -10,6 +10,7 @@
 - 練習模式可在聊天室開關兩個護欄，不顯示過關進度；考試模式兩個護欄皆啟用，每次回覆後自動比對帳密並更新過關進度。
 - 練習模式聊天室下方的「執行流程」順序圖會即時顯示訊息經過的節點（使用者、輸入護欄、Chatbot、LLM、內部工具、輸出護欄），包含工具參數與回傳內容；資料來自 chatbot 的 `/chat/stream`（NDJSON），考試模式不使用。
 - 練習模式的護欄設定儲存後，portal 會更新 ConfigMap；Kubernetes 同步到 chatbot 通常要數十秒到一兩分鐘。聊天室會向 chatbot 的 `/guardrail` 查詢實際生效的開關，等到與儲存的設定一致才顯示「已套用」。
+- 輸出護欄底下的「進階設定」可開啟敏感資料遮罩（`output.mask`，預設關閉），以規則比對遮掉沒被攔截的回覆中的敏感資料，換成 `[已遮罩:類型]`：本關資料庫帳密（含以空格分隔的寫法）、`password=`／`api_key:`／`密碼：` 等鍵值、連線字串帳密、私鑰、JWT、AWS／GitHub／Slack／`sk-` 金鑰、電子郵件、台灣手機號碼、身分證字號、信用卡號（Luhn 驗證）。這不屬於本課程的預期解法，打開後加空格的繞過方式就會失效；考試模式不使用。
 
 ## 設定與啟動
 
@@ -36,7 +37,7 @@ Filebeat 只收集兩個 chatbot 的 log，並加上以下欄位（`message` 保
 | 欄位 | 值 |
 |---|---|
 | `chat.mode` | `practice`（練習模式）、`exam`（考試模式） |
-| `chat.event` | `turn`（一則對話）、`input_blocked`、`output_blocked`、`tool_call` |
+| `chat.event` | `turn`（一則對話）、`input_blocked`、`output_blocked`、`output_masked`、`tool_call` |
 | `chat.user_message`、`chat.assistant_response` | 一則對話的使用者訊息與回覆 |
 
 在 Discover 選「Lab 01 container and chatbot logs」，例如：

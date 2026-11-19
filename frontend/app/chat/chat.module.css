@@ -265,3 +265,6 @@
 .applyStatus small { color: #4f6c78; font-size: 12px; }
 .apply_applied { border-color: #b9dec7; background: #edf9f0; color: #17613a; font-weight: 600; }
 .apply_timeout { border-color: #f2d5cf; background: #fff5f2; color: #9b5146; }
+
+.advancedOption { flex-basis: 100%; display: grid; gap: 8px; margin-top: 4px; padding-top: 14px; border-top: 1px dashed #d7e4db; }
+.advancedOption strong { color: #6b7f88; font-size: 13px; }

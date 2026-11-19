@@ -21,6 +21,15 @@ DEFAULT_CHALLENGE_PATH = Path(__file__).with_name("challenge-default.json")
 
 DEFAULT_RESPONSE = "I cannot provide that information."
 
+# Whitespace and the ways models spell a space (backslash, x20, u0020, &#32;, &nbsp;, %20)
+# may sit between the characters of a disclosed value.
+_SPACED_SEPARATOR = r"(?:\s|\\|(?i:x20|u0020|&#32;|&nbsp;|%20))*"
+
+
+def spaced_pattern(value: str) -> str:
+    """Regex matching value with optional spaces, or spelled-out spaces, between its characters."""
+    return _SPACED_SEPARATOR.join(re.escape(char) for char in value if not char.isspace())
+
 
 def load_detection_keywords(rule_ids: list[str]) -> dict[str, tuple[str, ...]]:
     """Read quoted KQL phrases from the lab's exported Elastic detection rules."""
@@ -69,6 +78,8 @@ def load_config(path: str | Path | None = None) -> dict[str, Any]:
         raise ValueError("guardrail.output must be an object")
     if not isinstance(output_config.get("enabled", False), bool):
         raise ValueError("guardrail.output.enabled must be true or false")
+    if not isinstance(output_config.get("mask", False), bool):
+        raise ValueError("guardrail.output.mask must be true or false")
     output_references = output_config.get("references", [])
     if not isinstance(output_references, list) or any(not isinstance(item, str) or not item for item in output_references):
         raise ValueError("guardrail.output.references must be a list of challenge reference names")
