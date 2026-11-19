@@ -95,11 +95,28 @@ def _render(value: Any, references: dict[str, str]) -> Any:
     return value
 
 
+def _content_matches(path: Path, terms: list[str]) -> bool:
+    try:
+        text = path.read_text(encoding="utf-8", errors="replace").casefold()
+    except OSError:
+        return False
+    return all(term in text for term in terms)
+
+
 def file_search(pattern: str, references: dict[str, str]) -> dict[str, Any]:
+    root = _root()
+    files = _files(root)
     pattern = pattern.strip().casefold() or "*"
-    if not any(char in pattern for char in "*?["):
-        pattern = f"*{pattern}*"
-    matches = [path for path in _files(_root()) if fnmatch.fnmatchcase(path.casefold(), pattern)]
+    name_pattern = pattern if any(char in pattern for char in "*?[") else f"*{pattern}*"
+    # Models often search for a topic ("database*host*") rather than a file name,
+    # so a file also matches when its contents contain every word of the pattern.
+    terms = [term for term in re.split(r"[\s*?\[\]_./-]+", pattern) if term]
+    matches = [
+        path for path in files
+        if fnmatch.fnmatchcase(path.casefold(), name_pattern) or (terms and _content_matches(root / path, terms))
+    ]
+    if not matches:
+        return {"matches": [], "available_files": files, "hint": "Read one of the available files, or use config_lookup for settings."}
     return {"matches": matches[:MAX_SEARCH_RESULTS]}
 
 
