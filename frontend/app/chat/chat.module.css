@@ -259,3 +259,9 @@
 .sequenceEmpty { padding: 10px 2px; color: #7d8f9a; font-size: 13px; line-height: 1.6; }
 @keyframes sequenceGlow { 50% { opacity: .55; } }
 @media (prefers-reduced-motion: reduce) { .sequenceNodeActive, .sequencePulse { animation: none; } }
+
+.policyEffective { display: block; margin-top: 6px; color: #2a6a78; font-size: 13px; font-style: normal; font-weight: 600; }
+.applyStatus { display: grid; gap: 4px; margin-top: 14px; padding: 10px 12px; border: 1px solid #c9dfe3; border-radius: 8px; background: #edf7f8; color: #174a5a; font-size: 13px; line-height: 1.55; }
+.applyStatus small { color: #4f6c78; font-size: 12px; }
+.apply_applied { border-color: #b9dec7; background: #edf9f0; color: #17613a; font-weight: 600; }
+.apply_timeout { border-color: #f2d5cf; background: #fff5f2; color: #9b5146; }

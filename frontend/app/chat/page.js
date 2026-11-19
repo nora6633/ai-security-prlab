@@ -5,6 +5,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import SequenceDiagram from "./SequenceDiagram";
 import styles from "./chat.module.css";
 
+const APPLY_TIMEOUT_SECONDS = 180;
+const onOff = (enabled) => (enabled ? "開啟" : "關閉");
+
 export default function ChatPage() {
   const [messages, setMessages] = useState([]);
   const [draft, setDraft] = useState("");
@@ -22,6 +25,9 @@ export default function ChatPage() {
   const [rulesError, setRulesError] = useState("");
   const [policyMessage, setPolicyMessage] = useState("");
   const [policyBusy, setPolicyBusy] = useState(false);
+  const [effective, setEffective] = useState(null);
+  const [applying, setApplying] = useState(null);
+  const [applyStatus, setApplyStatus] = useState(null);
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
 
@@ -57,6 +63,40 @@ export default function ChatPage() {
       .catch(() => setChallenge(null));
   }, [labId]);
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, busy, error]);
+
+  // The chatbot reads the guardrail ConfigMap only after Kubernetes syncs it, so ask the
+  // chatbot which switches it is really using instead of trusting the save response.
+  const fetchEffective = useCallback(async () => {
+    const response = await fetch(`/api/chat/guardrail?lab=${encodeURIComponent(labId)}`, { cache: "no-store" });
+    if (!response.ok) throw new Error("chatbot unavailable");
+    const data = await response.json();
+    setEffective(data);
+    return data;
+  }, [labId]);
+  useEffect(() => {
+    if (status.running && chatMode === "guarded") fetchEffective().catch(() => setEffective(null));
+  }, [status.running, chatMode, fetchEffective]);
+  useEffect(() => {
+    if (!applying) return undefined;
+    let stopped = false;
+    async function check() {
+      const current = await fetchEffective().catch(() => null);
+      if (stopped) return;
+      const seconds = Math.round((Date.now() - applying.since) / 1000);
+      if (current && current.input === applying.target.input && current.output === applying.target.output) {
+        setApplying(null);
+        setApplyStatus({ kind: "applied", seconds });
+      } else if (seconds >= APPLY_TIMEOUT_SECONDS) {
+        setApplying(null);
+        setApplyStatus({ kind: "timeout", seconds });
+      } else {
+        setApplyStatus({ kind: "pending", seconds });
+      }
+    }
+    check();
+    const timer = setInterval(check, 2000);
+    return () => { stopped = true; clearInterval(timer); };
+  }, [applying, fetchEffective]);
 
   // Practice mode streams each step so the sequence diagram can follow the turn live.
   async function streamChat(nextMessages) {
@@ -139,13 +179,19 @@ export default function ChatPage() {
     event.preventDefault();
     setPolicyBusy(true);
     setPolicyMessage("");
+    setApplyStatus(null);
     try {
       const response = await fetch(`/api/control/guardrail?lab=${encodeURIComponent(labId)}`, {
         method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(policy),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "儲存失敗");
-      setPolicyMessage(data.message);
+      if (data.applied) {
+        setApplying({ target: { input: policy.input.enabled, output: policy.output.enabled }, since: Date.now() });
+        setApplyStatus({ kind: "pending", seconds: 0 });
+      } else {
+        setPolicyMessage(data.message);
+      }
     } catch (error) { setPolicyMessage(error.message || "儲存失敗"); }
     finally { setPolicyBusy(false); }
   }
@@ -285,7 +331,7 @@ export default function ChatPage() {
           </article>) : <p>本關尚未設定顯示的偵測規則。</p>) : <p>正在讀取規則…</p>}
         </section>
         <details className={styles.policyPanel}>
-          <summary>護欄設定</summary>
+          <summary>護欄設定<em className={styles.policyEffective}>{effective ? `目前生效：輸入 ${onOff(effective.input)} · 輸出 ${onOff(effective.output)}` : "目前生效：讀取中…"}</em></summary>
           {policy ? <form onSubmit={savePolicy}>
             <fieldset><legend>輸入護欄</legend>
               <label><input type="checkbox" checked={policy.input.enabled} onChange={(event) => updatePolicy("input", "enabled", event.target.checked)} /> 命中偵測規則關鍵字時拒答</label>
@@ -293,8 +339,13 @@ export default function ChatPage() {
             <fieldset><legend>輸出護欄</legend>
               <label><input type="checkbox" checked={policy.output.enabled} onChange={(event) => updatePolicy("output", "enabled", event.target.checked)} /> 回覆含資料庫帳號或密碼時拒答</label>
             </fieldset>
-            <button className={styles.policySave} type="submit" disabled={policyBusy}>{policyBusy ? "儲存中…" : "儲存護欄設定"}</button>
+            <button className={styles.policySave} type="submit" disabled={policyBusy || Boolean(applying)}>{policyBusy ? "儲存中…" : applying ? "套用中…" : "儲存護欄設定"}</button>
           </form> : <p>正在讀取護欄設定…</p>}
+          {applyStatus && <div role="status" className={`${styles.applyStatus} ${styles[`apply_${applyStatus.kind}`]}`}>
+            {applyStatus.kind === "pending" && <>已儲存，等待 chatbot 載入新設定…（{applyStatus.seconds} 秒）<small>Kubernetes 同步設定檔通常需要數十秒到一兩分鐘，套用前送出的訊息仍使用舊設定。</small></>}
+            {applyStatus.kind === "applied" && <>✓ 已套用（{applyStatus.seconds} 秒）：從下一則訊息開始，輸入護欄{onOff(effective?.input)}、輸出護欄{onOff(effective?.output)}。</>}
+            {applyStatus.kind === "timeout" && <>超過 {APPLY_TIMEOUT_SECONDS / 60} 分鐘 chatbot 仍未載入新設定，請到實驗控制台重新啟動 Lab。</>}
+          </div>}
           {policyMessage && <p role="status">{policyMessage}</p>}
           <p>此設定套用於練習模式。</p>
         </details>

@@ -116,6 +116,19 @@ async def health():
     return {"status": "ok"}
 
 
+@app.get("/guardrail")
+async def guardrail_state():
+    """Report the guardrail switches this pod is using right now, after ConfigMap updates land."""
+    try:
+        config = load_config(os.getenv("GUARDRAIL_CONFIG"))
+    except ValueError as exc:
+        raise HTTPException(status_code=503, detail="Chatbot lab configuration is invalid") from exc
+    return {
+        "input": bool(guard_enabled(config, input_settings(config), True)),
+        "output": bool(guard_enabled(config, output_settings(config), False)),
+    }
+
+
 async def process_chat(request: ChatRequest, emit: Emit = ignore_step) -> dict:
     base_url = os.getenv("BASEURL", "http://host.docker.internal:8080").rstrip("/")
     model = os.getenv("OPENWEBUI_MODEL", "")
