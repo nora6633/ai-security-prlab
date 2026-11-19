@@ -225,3 +225,36 @@
 .page :where(p,span,small,strong,a,button,td,th,li,dt,dd,label) { font-size:max(14px, 1em) !important; }
 
 .modeSwitch{display:flex;align-items:center;gap:9px;flex-wrap:wrap;padding:12px 20px;border-bottom:1px solid #e5ebee;background:#f8fafb}.modeSwitch>span{margin-right:5px;color:#4f6676;font-size:15px;font-weight:600}.modeSwitch button{padding:9px 13px;border:1px solid #d5e0e5;border-radius:7px;background:#fff;color:#465e6f;font-size:14px;cursor:pointer}.modeSwitch button:hover{border-color:#81bec5}.modeSwitch .modeSelected{border-color:#1d7186;background:#e8f5f5;color:#16576d;font-weight:700}
+
+.sequencePanel { min-width: 0; padding: 18px 16px; border: 1px solid var(--line); border-radius: 17px; background: #fff; box-shadow: 0 16px 44px #18332e0a; }
+.sequenceHeading { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+.sequenceHeading h2 { margin: 0; font-size: 20px; color: #173550; }
+.sequenceState { padding: 3px 9px; border-radius: 99px; background: #edf4f4; color: #2a6a78; font-size: 12px; font-weight: 600; }
+.sequenceNodes { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 3px; margin-bottom: 4px; }
+.sequenceNode { padding: 6px 2px; border: 1px solid #d5e0e5; border-radius: 7px; background: #f8fafb; color: #5f7482; font-size: 12px; font-weight: 600; text-align: center; overflow-wrap: anywhere; transition: background .2s, border-color .2s, color .2s; }
+.sequenceNodeVisited { border-color: #9ad3d3; background: #eef8f8; color: #1d6a78; }
+.sequenceNodeActive { border-color: #1d7186; background: #1d7186; color: #fff; box-shadow: 0 0 0 3px #48d1d240; animation: sequenceGlow 1.2s ease-in-out infinite; }
+.sequenceSteps { position: relative; display: grid; gap: 2px; max-height: 460px; margin: 0; padding: 0; overflow-y: auto; list-style: none; }
+.sequenceStep { display: grid; gap: 3px; padding: 6px 0; }
+.sequenceLabel { display: flex; align-items: baseline; gap: 6px; color: #2b4656; font-size: 12px; line-height: 1.45; overflow-wrap: anywhere; }
+.sequenceLabel b { flex: 0 0 auto; min-width: 18px; color: #7d8f9a; font: 600 11px var(--mono); }
+.sequenceArrowRow { position: relative; height: 12px; }
+.lifeline { position: absolute; top: -4px; bottom: -4px; width: 0; border-left: 1px dashed #d3dee3; }
+.sequenceArrow { position: absolute; top: 5px; height: 2px; background: #2a8c98; }
+.sequenceArrow::after { content: ""; position: absolute; top: -4px; right: -1px; border: 5px solid transparent; border-left: 7px solid #2a8c98; border-right: 0; }
+.sequenceArrowLeft::after { right: auto; left: -1px; border-left: 0; border-right: 7px solid #2a8c98; }
+.sequenceDetail { max-height: 110px; margin: 2px 0 0 24px; padding: 7px 9px; overflow: auto; border-radius: 6px; background: #f3f7f8; color: #34505e; font: 11px/1.5 var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; }
+.sequence_blocked .sequenceLabel { color: #a1402f; font-weight: 600; }
+.sequence_blocked .sequenceArrow { background: #d0584a; }
+.sequence_blocked .sequenceArrow::after { border-left-color: #d0584a; }
+.sequence_blocked .sequenceArrowLeft::after { border-right-color: #d0584a; }
+.sequence_blocked .sequenceDetail { background: #fff3ef; color: #8f4436; }
+.sequence_skipped .sequenceLabel { color: #8a98a1; }
+.sequence_skipped .sequenceArrow { height: 0; border-top: 2px dashed #a9b6bd; background: none; }
+.sequence_skipped .sequenceArrow::after { top: -6px; border-left-color: #a9b6bd; }
+.sequence_skipped .sequenceArrowLeft::after { border-right-color: #a9b6bd; }
+.sequenceWaiting .sequenceLabel { color: #1d7186; }
+.sequencePulse { position: absolute; top: 1px; width: 10px; height: 10px; margin-left: -5px; border-radius: 50%; background: #35c4c4; animation: sequenceGlow 1s ease-in-out infinite; }
+.sequenceEmpty { padding: 10px 2px; color: #7d8f9a; font-size: 13px; line-height: 1.6; }
+@keyframes sequenceGlow { 50% { opacity: .55; } }
+@media (prefers-reduced-motion: reduce) { .sequenceNodeActive, .sequencePulse { animation: none; } }

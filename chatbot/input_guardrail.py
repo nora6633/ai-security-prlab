@@ -20,6 +20,8 @@ def inspect_content(message: str, config: dict[str, Any]) -> GuardrailDecision:
         return GuardrailDecision(triggered=False)
     # Elastic rules match one log line at a time, so only the newest message is checked.
     tokens = _tokens(message)
-    categories = tuple(rule_id for rule_id, phrases in settings.get("_detection_keywords", {}).items()
-                       if any(_contains_phrase(tokens, phrase) for phrase in phrases))
-    return GuardrailDecision(triggered=bool(categories), categories=categories)
+    hits = {rule_id: tuple(phrase for phrase in phrases if _contains_phrase(tokens, phrase))
+            for rule_id, phrases in settings.get("_detection_keywords", {}).items()}
+    categories = tuple(rule_id for rule_id, matched in hits.items() if matched)
+    matches = tuple(dict.fromkeys(phrase for matched in hits.values() for phrase in matched))
+    return GuardrailDecision(triggered=bool(categories), categories=categories, matches=matches)

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
+import SequenceDiagram from "./SequenceDiagram";
 import styles from "./chat.module.css";
 
 export default function ChatPage() {
@@ -14,6 +15,7 @@ export default function ChatPage() {
   const [objectiveResults, setObjectiveResults] = useState({});
   const [challengeError, setChallengeError] = useState("");
   const [chatMode, setChatMode] = useState("guarded");
+  const [trace, setTrace] = useState({ steps: [], error: "" });
   const [labId, setLabId] = useState("Lab01");
   const [policy, setPolicy] = useState(null);
   const [detectionRules, setDetectionRules] = useState(null);
@@ -56,6 +58,46 @@ export default function ChatPage() {
   }, [labId]);
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, busy, error]);
 
+  // Practice mode streams each step so the sequence diagram can follow the turn live.
+  async function streamChat(nextMessages) {
+    const response = await fetch(`/api/chat/stream?lab=${encodeURIComponent(labId)}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ messages: nextMessages }),
+    });
+    if (!response.ok || !response.body) {
+      const data = await response.json().catch(() => ({}));
+      throw new Error(data.detail || "聊天請求失敗。");
+    }
+    const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
+    let buffer = "";
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += value;
+      const lines = buffer.split("\n");
+      buffer = lines.pop();
+      for (const line of lines.filter(Boolean)) {
+        const event = JSON.parse(line);
+        if (event.type === "step") setTrace((current) => ({ ...current, steps: [...current.steps, event] }));
+        else if (event.type === "result") return event.data;
+        else if (event.type === "error") throw new Error(event.detail || "聊天請求失敗。");
+      }
+    }
+    throw new Error("chatbot 連線中斷，沒有收到回覆。");
+  }
+
+  async function postChat(nextMessages) {
+    const response = await fetch(`/api/chat?lab=${encodeURIComponent(labId)}&mode=${chatMode}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ messages: nextMessages }),
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.detail || "聊天請求失敗。");
+    return data;
+  }
+
   async function sendMessage(text = draft) {
     const content = text.trim();
     if (!content || busy || !status.running) return;
@@ -65,15 +107,10 @@ export default function ChatPage() {
     setDraft("");
     setBusy(true);
     setError("");
+    setTrace({ steps: [], error: "" });
 
     try {
-      const response = await fetch(`/api/chat?lab=${encodeURIComponent(labId)}&mode=${chatMode}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: nextMessages }),
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.detail || "聊天請求失敗。");
+      const data = chatMode === "guarded" ? await streamChat(nextMessages) : await postChat(nextMessages);
       if (data.challenge?.objectives) {
         setObjectiveResults((current) => Object.fromEntries([
           ...Object.entries(current),
@@ -86,6 +123,7 @@ export default function ChatPage() {
       setMessages([...nextMessages, { role: "assistant", content: data.reply }]);
     } catch (requestError) {
       setError(requestError.message || "無法連到 chatbot。");
+      setTrace((current) => ({ ...current, error: requestError.message || "無法連到 chatbot。" }));
     } finally {
       setBusy(false);
       inputRef.current?.focus();
@@ -126,6 +164,7 @@ export default function ChatPage() {
     setObjectiveResults({});
     setError("");
     setChallengeError("");
+    setTrace({ steps: [], error: "" });
   }
 
   const stateText = status.loading
@@ -155,7 +194,7 @@ export default function ChatPage() {
             <h1>測試聊天室</h1>
             <p>直接輸入訊息，測試 Lab chatbot。</p>
           </div>
-          <button className={styles.clearButton} type="button" onClick={() => { setMessages([]); setObjectiveResults({}); setChallengeError(""); setError(""); }} disabled={busy || !messages.length}>
+          <button className={styles.clearButton} type="button" onClick={() => { setMessages([]); setObjectiveResults({}); setChallengeError(""); setError(""); setTrace({ steps: [], error: "" }); }} disabled={busy || !messages.length}>
             新對話
           </button>
         </header>
@@ -232,6 +271,7 @@ export default function ChatPage() {
         <div className={styles.chatFoot}><span>重新整理頁面會清除本次對話。</span><span>{messages.length ? `${messages.length} 則訊息` : `${labId} 測試`}</span></div>
       </section>
         {chatMode === "guarded" && <aside className={styles.guardrailSidebar}>
+        <SequenceDiagram steps={trace.steps} running={busy} error={trace.error} />
         <section className={styles.detectionPanel} aria-label="本關防禦規則">
           <h2>本關偵測規則</h2>
           {rulesError ? <p role="alert">{rulesError}</p> : detectionRules ? (detectionRules.length ? detectionRules.map((rule) => <article className={styles.detectionRule} key={rule.id}>

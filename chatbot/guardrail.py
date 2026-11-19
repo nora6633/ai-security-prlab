@@ -13,6 +13,7 @@ from typing import Any
 class GuardrailDecision:
     triggered: bool
     categories: tuple[str, ...] = ()
+    matches: tuple[str, ...] = ()
 
 
 DEFAULT_CONFIG_PATH = Path(__file__).with_name("guardrail-default.json")
