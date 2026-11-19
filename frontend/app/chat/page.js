@@ -186,6 +186,7 @@ export default function ChatPage() {
       </nav>
 
       <div className={styles.workspace}>
+      <div className={styles.chatColumn}>
       <section className={styles.chatCard}>
         <header className={styles.chatHeader}>
           <div className={styles.avatar}>AI</div>
@@ -270,8 +271,9 @@ export default function ChatPage() {
         </form>
         <div className={styles.chatFoot}><span>重新整理頁面會清除本次對話。</span><span>{messages.length ? `${messages.length} 則訊息` : `${labId} 測試`}</span></div>
       </section>
+      {chatMode === "guarded" && <SequenceDiagram steps={trace.steps} running={busy} error={trace.error} />}
+      </div>
         {chatMode === "guarded" && <aside className={styles.guardrailSidebar}>
-        <SequenceDiagram steps={trace.steps} running={busy} error={trace.error} />
         <section className={styles.detectionPanel} aria-label="本關防禦規則">
           <h2>本關偵測規則</h2>
           {rulesError ? <p role="alert">{rulesError}</p> : detectionRules ? (detectionRules.length ? detectionRules.map((rule) => <article className={styles.detectionRule} key={rule.id}>

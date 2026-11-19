@@ -42,6 +42,7 @@
 
 .workspace { display: grid; grid-template-columns: minmax(0, 1fr); gap: 24px; align-items: start; margin: 28px auto 0; }
 .workspace:has(.guardrailSidebar) { grid-template-columns: minmax(0, 1fr) minmax(360px, 460px); }
+.chatColumn { min-width: 0; display: grid; gap: 24px; align-content: start; }
 .chatCard {
   display: flex;
   flex-direction: column;
